@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Playfair Display — display serif */
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay-Italic-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* General Sans — body */
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-VariableItalic.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Dark luxury palette — permanently dark */
+    --background: 0.1 0 0;
+    --foreground: 0.96 0.01 85;
+
+    --card: 0.14 0.005 60;
+    --card-foreground: 0.96 0.01 85;
+
+    --popover: 0.16 0.005 60;
+    --popover-foreground: 0.96 0.01 85;
+
+    /* Gold/amber primary */
+    --primary: 0.78 0.16 75;
+    --primary-foreground: 0.1 0 0;
+
+    --secondary: 0.18 0.008 60;
+    --secondary-foreground: 0.82 0.08 75;
+
+    --muted: 0.16 0.005 60;
+    --muted-foreground: 0.55 0.04 75;
+
+    /* Deep amber accent */
+    --accent: 0.65 0.18 65;
+    --accent-foreground: 0.1 0 0;
+
+    --destructive: 0.62 0.21 27;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.25 0.02 75;
+    --input: 0.22 0.015 75;
+    --ring: 0.78 0.16 75;
+
+    --chart-1: 0.78 0.16 75;
+    --chart-2: 0.65 0.18 65;
+    --chart-3: 0.55 0.14 55;
+    --chart-4: 0.45 0.1 45;
+    --chart-5: 0.35 0.08 35;
+
+    --sidebar: 0.12 0.003 60;
+    --sidebar-foreground: 0.96 0.01 85;
+    --sidebar-primary: 0.78 0.16 75;
+    --sidebar-primary-foreground: 0.1 0 0;
+    --sidebar-accent: 0.18 0.008 60;
+    --sidebar-accent-foreground: 0.82 0.08 75;
+    --sidebar-border: 0.25 0.02 75;
+    --sidebar-ring: 0.78 0.16 75;
+
+    /* Custom tokens */
+    --gold: 0.78 0.16 75;
+    --gold-dim: 0.65 0.14 70;
+    --gold-deep: 0.55 0.18 60;
+    --surface: 0.14 0.005 60;
+    --surface-raised: 0.18 0.008 60;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+  .font-body {
+    font-family: "General Sans", system-ui, sans-serif;
+  }
+  .text-gold {
+    color: oklch(var(--gold));
+  }
+  .bg-gold {
+    background-color: oklch(var(--gold));
+  }
+  .border-gold {
+    border-color: oklch(var(--gold));
+  }
+  .shadow-gold {
+    box-shadow: 0 0 24px oklch(var(--gold) / 0.2);
+  }
+  .shadow-gold-lg {
+    box-shadow: 0 0 48px oklch(var(--gold) / 0.15), 0 4px 32px oklch(var(--gold) / 0.1);
+  }
+  .glow-amber {
+    box-shadow: 0 -8px 32px oklch(var(--gold) / 0.25) inset;
+  }
+}
