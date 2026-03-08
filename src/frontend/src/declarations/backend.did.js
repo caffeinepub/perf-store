@@ -8,6 +8,11 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const AuthResult = IDL.Record({
+  'ok' : IDL.Bool,
+  'token' : IDL.Text,
+  'message' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -89,11 +94,6 @@ export const StripeSessionStatus = IDL.Variant({
   }),
   'failed' : IDL.Record({ 'error' : IDL.Text }),
 });
-export const AuthResult = IDL.Record({
-  'ok' : IDL.Bool,
-  'token' : IDL.Text,
-  'message' : IDL.Text,
-});
 export const StripeConfiguration = IDL.Record({
   'allowedCountries' : IDL.Vec(IDL.Text),
   'secretKey' : IDL.Text,
@@ -120,6 +120,7 @@ export const TransformationOutput = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addToCart' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'adminResetPassword' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'clearCart' : IDL.Func([], [], []),
   'createCheckoutSession' : IDL.Func(
@@ -130,6 +131,7 @@ export const idlService = IDL.Service({
   'getAllPartnerProducts' : IDL.Func([], [IDL.Vec(PartnerProduct)], ['query']),
   'getAllPayoutRecords' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
   'getAllRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
+  'getAllUserEmails' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
   'getAverageRating' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -143,6 +145,7 @@ export const idlService = IDL.Service({
   'getPayoutAccount' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
   'getPerfumes' : IDL.Func([], [IDL.Vec(Perfume)], ['query']),
   'getReviewsForPerfume' : IDL.Func([IDL.Nat], [IDL.Vec(Review)], ['query']),
+  'getSecurityQuestion' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
   'getSessionEmail' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getUserProfile' : IDL.Func(
@@ -156,7 +159,16 @@ export const idlService = IDL.Service({
   'loginWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
   'logoutSession' : IDL.Func([IDL.Text], [], []),
   'placeOrder' : IDL.Func([IDL.Text], [], []),
-  'registerWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
+  'registerWithEmail' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [AuthResult],
+      [],
+    ),
+  'resetPasswordWithSecurityAnswer' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [AuthResult],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'savePayoutAccount' : IDL.Func([IDL.Text], [], []),
   'setCommissionRate' : IDL.Func([IDL.Nat], [], []),
@@ -181,6 +193,11 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const AuthResult = IDL.Record({
+    'ok' : IDL.Bool,
+    'token' : IDL.Text,
+    'message' : IDL.Text,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -259,11 +276,6 @@ export const idlFactory = ({ IDL }) => {
     }),
     'failed' : IDL.Record({ 'error' : IDL.Text }),
   });
-  const AuthResult = IDL.Record({
-    'ok' : IDL.Bool,
-    'token' : IDL.Text,
-    'message' : IDL.Text,
-  });
   const StripeConfiguration = IDL.Record({
     'allowedCountries' : IDL.Vec(IDL.Text),
     'secretKey' : IDL.Text,
@@ -287,6 +299,7 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addToCart' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'adminResetPassword' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'clearCart' : IDL.Func([], [], []),
     'createCheckoutSession' : IDL.Func(
@@ -301,6 +314,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllPayoutRecords' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
     'getAllRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
+    'getAllUserEmails' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'getAverageRating' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -314,6 +328,11 @@ export const idlFactory = ({ IDL }) => {
     'getPayoutAccount' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
     'getPerfumes' : IDL.Func([], [IDL.Vec(Perfume)], ['query']),
     'getReviewsForPerfume' : IDL.Func([IDL.Nat], [IDL.Vec(Review)], ['query']),
+    'getSecurityQuestion' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(IDL.Text)],
+        ['query'],
+      ),
     'getSessionEmail' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getUserProfile' : IDL.Func(
@@ -327,7 +346,16 @@ export const idlFactory = ({ IDL }) => {
     'loginWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
     'logoutSession' : IDL.Func([IDL.Text], [], []),
     'placeOrder' : IDL.Func([IDL.Text], [], []),
-    'registerWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
+    'registerWithEmail' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [AuthResult],
+        [],
+      ),
+    'resetPasswordWithSecurityAnswer' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [AuthResult],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'savePayoutAccount' : IDL.Func([IDL.Text], [], []),
     'setCommissionRate' : IDL.Func([IDL.Nat], [], []),

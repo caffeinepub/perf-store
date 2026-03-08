@@ -124,12 +124,14 @@ export enum UserRole {
 }
 export interface backendInterface {
     addToCart(perfumeId: bigint, quantity: bigint): Promise<void>;
+    adminResetPassword(email: string, newPassword: string): Promise<AuthResult>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     clearCart(): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     getAllPartnerProducts(): Promise<Array<PartnerProduct>>;
     getAllPayoutRecords(): Promise<Array<PayoutRecord>>;
     getAllRefundRequests(): Promise<Array<RefundRequest>>;
+    getAllUserEmails(): Promise<Array<string>>;
     getAverageRating(perfumeId: bigint): Promise<number>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -143,6 +145,7 @@ export interface backendInterface {
     getPayoutAccount(): Promise<string | null>;
     getPerfumes(): Promise<Array<Perfume>>;
     getReviewsForPerfume(perfumeId: bigint): Promise<Array<Review>>;
+    getSecurityQuestion(email: string): Promise<string | null>;
     /**
      * / Get the email associated with a session token
      */
@@ -164,7 +167,8 @@ export interface backendInterface {
     /**
      * / Register with email and password.
      */
-    registerWithEmail(email: string, password: string): Promise<AuthResult>;
+    registerWithEmail(email: string, password: string, securityQuestion: string, securityAnswer: string): Promise<AuthResult>;
+    resetPasswordWithSecurityAnswer(email: string, securityAnswer: string, newPassword: string): Promise<AuthResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     savePayoutAccount(stripeConnectAccountId: string): Promise<void>;
     setCommissionRate(rate: bigint): Promise<void>;

@@ -1,11 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
+
+const SECURITY_QUESTIONS = [
+  "What is your mother's maiden name?",
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What was the name of your primary school?",
+  "What is your oldest sibling's middle name?",
+];
 
 interface SignupPageProps {
   onNavigateToLogin: () => void;
@@ -20,6 +35,8 @@ export function SignupPage({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [securityQuestion, setSecurityQuestion] = useState("");
+  const [securityAnswer, setSecurityAnswer] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -47,6 +64,14 @@ export function SignupPage({
       setErrorMsg("Passwords do not match");
       return;
     }
+    if (!securityQuestion) {
+      setErrorMsg("Please select a security question");
+      return;
+    }
+    if (!securityAnswer.trim()) {
+      setErrorMsg("Please enter your security answer");
+      return;
+    }
     if (!actor) {
       setErrorMsg("Connection not ready. Please try again.");
       return;
@@ -54,7 +79,12 @@ export function SignupPage({
 
     setIsCreating(true);
     try {
-      const result = await actor.registerWithEmail(email.trim(), password);
+      const result = await actor.registerWithEmail(
+        email.trim(),
+        password,
+        securityQuestion,
+        securityAnswer.trim(),
+      );
       if (result.ok) {
         toast.success("Account created! Please sign in.");
         onSignupSuccess();
@@ -188,6 +218,60 @@ export function SignupPage({
                 onKeyDown={handleKeyDown}
                 placeholder="••••••••"
                 autoComplete="new-password"
+                className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
+                data-ocid="signup.input"
+              />
+            </div>
+
+            {/* Security question */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="signup-security-question"
+                className="text-muted-foreground text-xs font-body tracking-widest uppercase"
+              >
+                Security Question
+              </Label>
+              <Select
+                value={securityQuestion}
+                onValueChange={setSecurityQuestion}
+              >
+                <SelectTrigger
+                  id="signup-security-question"
+                  className="bg-input/50 border-border text-foreground focus:ring-gold focus:border-gold font-body text-sm"
+                  data-ocid="signup.select"
+                >
+                  <SelectValue placeholder="Select a security question" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border text-foreground">
+                  {SECURITY_QUESTIONS.map((q) => (
+                    <SelectItem
+                      key={q}
+                      value={q}
+                      className="font-body text-sm focus:bg-secondary focus:text-foreground"
+                    >
+                      {q}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Security answer */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="signup-security-answer"
+                className="text-muted-foreground text-xs font-body tracking-widest uppercase"
+              >
+                Security Answer
+              </Label>
+              <Input
+                id="signup-security-answer"
+                type="text"
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Your answer"
+                autoComplete="off"
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="signup.input"
               />

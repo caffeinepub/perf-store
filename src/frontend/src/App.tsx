@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import type { Perfume } from "./backend.d";
 import { useActor } from "./hooks/useActor";
 import { CartPage } from "./pages/CartPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrdersPage } from "./pages/OrdersPage";
@@ -22,7 +23,7 @@ import { SignupPage } from "./pages/SignupPage";
 const TOKEN_KEY = "perf_session_token";
 const EMAIL_KEY = "perf_session_email";
 
-type AuthView = "login" | "signup";
+type AuthView = "login" | "signup" | "forgotPassword";
 type MainTab = "home" | "cart" | "orders" | "partner";
 
 export default function App() {
@@ -96,12 +97,12 @@ export default function App() {
     );
   }
 
-  // Unauthenticated — show login / signup
+  // Unauthenticated — show login / signup / forgot password
   if (!isAuthenticated) {
     return (
       <>
         <AnimatePresence mode="wait">
-          {authView === "login" ? (
+          {authView === "login" && (
             <motion.div
               key="login"
               initial={{ opacity: 0 }}
@@ -112,9 +113,11 @@ export default function App() {
               <LoginPage
                 onNavigateToSignup={() => setAuthView("signup")}
                 onLoginSuccess={handleLoginSuccess}
+                onForgotPassword={() => setAuthView("forgotPassword")}
               />
             </motion.div>
-          ) : (
+          )}
+          {authView === "signup" && (
             <motion.div
               key="signup"
               initial={{ opacity: 0 }}
@@ -126,6 +129,17 @@ export default function App() {
                 onNavigateToLogin={() => setAuthView("login")}
                 onSignupSuccess={() => setAuthView("login")}
               />
+            </motion.div>
+          )}
+          {authView === "forgotPassword" && (
+            <motion.div
+              key="forgotPassword"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ForgotPasswordPage onBack={() => setAuthView("login")} />
             </motion.div>
           )}
         </AnimatePresence>

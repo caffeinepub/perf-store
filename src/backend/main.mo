@@ -17,7 +17,6 @@ import Migration "migration";
 import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 
-// Use migration module for upgrade
 (with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
@@ -101,6 +100,8 @@ actor {
     passwordHash : Text;
     salt : Text;
     userId : Nat;
+    securityQuestion : Text;
+    securityAnswerHash : Text;
   };
 
   type SessionData = {
@@ -163,13 +164,17 @@ actor {
   // Email Auth System
 
   /// Register with email and password.
-  public shared ({ caller }) func registerWithEmail(email : Text, password : Text) : async AuthResult {
+  public shared ({ caller }) func registerWithEmail(email : Text, password : Text, securityQuestion : Text, securityAnswer : Text) : async AuthResult {
     if (email == "") {
       return { ok = false; token = ""; message = "Email is required" };
     };
 
     if (password.size() < 6) {
       return { ok = false; token = ""; message = "Password must be at least 6 characters" };
+    };
+
+    if (securityQuestion == "" or securityAnswer == "") {
+      return { ok = false; token = ""; message = "Security question and answer are required" };
     };
 
     switch (emailCredentials.get(email)) {
@@ -181,11 +186,14 @@ actor {
 
     let salt = nextUserId.toText() # email;
     let passwordHash = hashPassword(password, salt);
+    let securityAnswerHash = simpleHash(securityAnswer);
 
     let credential : EmailCredential = {
       passwordHash;
       salt;
       userId = nextUserId;
+      securityQuestion;
+      securityAnswerHash;
     };
 
     emailCredentials.add(email, credential);
@@ -253,6 +261,100 @@ actor {
   /// Logout a session (invalidate token)
   public shared ({ caller }) func logoutSession(token : Text) : async () {
     sessions.remove(token);
+  };
+
+  public query ({ caller }) func getSecurityQuestion(email : Text) : async ?Text {
+    switch (emailCredentials.get(email)) {
+      case (null) { null };
+      case (?cred) { ?cred.securityQuestion };
+    };
+  };
+
+  public shared ({ caller }) func resetPasswordWithSecurityAnswer(email : Text, securityAnswer : Text, newPassword : Text) : async AuthResult {
+    switch (emailCredentials.get(email)) {
+      case (null) {
+        return {
+          ok = false;
+          token = "";
+          message = "Invalid email or security answer";
+        };
+      };
+      case (?cred) {
+        if (cred.securityAnswerHash != simpleHash(securityAnswer)) {
+          return {
+            ok = false;
+            token = "";
+            message = "Invalid email or security answer";
+          };
+        };
+
+        if (newPassword.size() < 6) {
+          return {
+            ok = false;
+            token = "";
+            message = "Password must be at least 6 characters";
+          };
+        };
+
+        let updatedCredential = {
+          cred with passwordHash = hashPassword(newPassword, cred.salt);
+        };
+        emailCredentials.add(email, updatedCredential);
+
+        {
+          ok = true;
+          token = "";
+          message = "Password reset successful";
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func adminResetPassword(email : Text, newPassword : Text) : async AuthResult {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return {
+        ok = false;
+        token = "";
+        message = "Unauthorized: Only admins can perform this action";
+      };
+    };
+
+    switch (emailCredentials.get(email)) {
+      case (null) {
+        return {
+          ok = false;
+          token = "";
+          message = "Email not found";
+        };
+      };
+      case (?cred) {
+        if (newPassword.size() < 6) {
+          return {
+            ok = false;
+            token = "";
+            message = "Password must be at least 6 characters";
+          };
+        };
+
+        let updatedCredential = {
+          cred with passwordHash = hashPassword(newPassword, cred.salt);
+        };
+        emailCredentials.add(email, updatedCredential);
+
+        {
+          ok = true;
+          token = "";
+          message = "Password reset successful";
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllUserEmails() : async [Text] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    emailCredentials.keys().toArray();
   };
 
   // Adapter for conversion
@@ -703,3 +805,4 @@ actor {
     };
   };
 };
+

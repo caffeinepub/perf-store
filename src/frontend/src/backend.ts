@@ -207,12 +207,14 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addToCart(perfumeId: bigint, quantity: bigint): Promise<void>;
+    adminResetPassword(email: string, newPassword: string): Promise<AuthResult>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     clearCart(): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     getAllPartnerProducts(): Promise<Array<PartnerProduct>>;
     getAllPayoutRecords(): Promise<Array<PayoutRecord>>;
     getAllRefundRequests(): Promise<Array<RefundRequest>>;
+    getAllUserEmails(): Promise<Array<string>>;
     getAverageRating(perfumeId: bigint): Promise<number>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -226,6 +228,7 @@ export interface backendInterface {
     getPayoutAccount(): Promise<string | null>;
     getPerfumes(): Promise<Array<Perfume>>;
     getReviewsForPerfume(perfumeId: bigint): Promise<Array<Review>>;
+    getSecurityQuestion(email: string): Promise<string | null>;
     /**
      * / Get the email associated with a session token
      */
@@ -247,7 +250,8 @@ export interface backendInterface {
     /**
      * / Register with email and password.
      */
-    registerWithEmail(email: string, password: string): Promise<AuthResult>;
+    registerWithEmail(email: string, password: string, securityQuestion: string, securityAnswer: string): Promise<AuthResult>;
+    resetPasswordWithSecurityAnswer(email: string, securityAnswer: string, newPassword: string): Promise<AuthResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     savePayoutAccount(stripeConnectAccountId: string): Promise<void>;
     setCommissionRate(rate: bigint): Promise<void>;
@@ -291,6 +295,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addToCart(arg0, arg1);
+            return result;
+        }
+    }
+    async adminResetPassword(arg0: string, arg1: string): Promise<AuthResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.adminResetPassword(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.adminResetPassword(arg0, arg1);
             return result;
         }
     }
@@ -375,6 +393,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAllRefundRequests();
+            return result;
+        }
+    }
+    async getAllUserEmails(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUserEmails();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUserEmails();
             return result;
         }
     }
@@ -560,6 +592,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getSecurityQuestion(arg0: string): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSecurityQuestion(arg0);
+                return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSecurityQuestion(arg0);
+            return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getSessionEmail(arg0: string): Promise<string | null> {
         if (this.processError) {
             try {
@@ -686,17 +732,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerWithEmail(arg0: string, arg1: string): Promise<AuthResult> {
+    async registerWithEmail(arg0: string, arg1: string, arg2: string, arg3: string): Promise<AuthResult> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerWithEmail(arg0, arg1);
+                const result = await this.actor.registerWithEmail(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerWithEmail(arg0, arg1);
+            const result = await this.actor.registerWithEmail(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async resetPasswordWithSecurityAnswer(arg0: string, arg1: string, arg2: string): Promise<AuthResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.resetPasswordWithSecurityAnswer(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.resetPasswordWithSecurityAnswer(arg0, arg1, arg2);
             return result;
         }
     }

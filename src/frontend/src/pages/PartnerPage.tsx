@@ -15,6 +15,7 @@ import {
   Copy,
   DollarSign,
   Edit2,
+  KeyRound,
   Link,
   Loader2,
   LogOut,
@@ -25,6 +26,7 @@ import {
   RefreshCw,
   Shield,
   TrendingUp,
+  UserCog,
   Users,
   Wallet,
   XCircle,
@@ -34,7 +36,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  useAdminResetPassword,
   useAllRefundRequests,
+  useAllUserEmails,
   useCommissionRate,
   useIsAdmin,
   usePartnerProducts,
@@ -114,10 +118,12 @@ export function PartnerPage() {
   const { data: isAdmin } = useIsAdmin();
   const { data: allRefundRequests, isLoading: refundsLoading } =
     useAllRefundRequests();
+  const { data: allUserEmails, isLoading: usersLoading } = useAllUserEmails();
 
   const savePayoutAccount = useSavePayoutAccount();
   const submitProduct = useSubmitPartnerProduct();
   const updateRefundStatus = useUpdateRefundStatus();
+  const adminResetPassword = useAdminResetPassword();
   const { clear } = useInternetIdentity();
 
   const [copied, setCopied] = useState(false);
@@ -125,6 +131,11 @@ export function PartnerPage() {
   // Payout account form
   const [connectAccountId, setConnectAccountId] = useState("");
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+
+  // Admin reset password form
+  const [resetTargetEmail, setResetTargetEmail] = useState<string | null>(null);
+  const [adminNewPassword, setAdminNewPassword] = useState("");
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
 
   // Product submission form
   const [productName, setProductName] = useState("");
@@ -1059,6 +1070,223 @@ export function PartnerPage() {
                                   Reject
                                 </Button>
                               </div>
+                            )}
+                          </motion.div>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* ── ADMIN: USER MANAGEMENT ── */}
+            {isAdmin && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.66 }}
+              >
+                <Card className="bg-card border-border">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+                        <UserCog className="text-gold w-5 h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                          User Management
+                          <Badge className="bg-secondary text-gold border-gold/30 font-body text-[10px]">
+                            Admin
+                          </Badge>
+                        </CardTitle>
+                        <p className="font-body text-xs text-muted-foreground mt-0.5">
+                          {usersLoading
+                            ? "Loading…"
+                            : `${allUserEmails?.length ?? 0} registered user${(allUserEmails?.length ?? 0) !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3">
+                    {usersLoading ? (
+                      <div
+                        className="space-y-2"
+                        data-ocid="partner.loading_state"
+                      >
+                        {["u1", "u2", "u3"].map((k) => (
+                          <div
+                            key={k}
+                            className="flex items-center justify-between p-3 rounded-md bg-secondary/40 border border-border/50"
+                          >
+                            <Skeleton className="h-4 w-1/2 bg-muted" />
+                            <Skeleton className="h-7 w-20 bg-muted rounded" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : !allUserEmails || allUserEmails.length === 0 ? (
+                      <div
+                        className="text-center py-6"
+                        data-ocid="partner.users.empty_state"
+                      >
+                        <Users className="text-muted-foreground w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-body text-sm text-muted-foreground">
+                          No registered users yet.
+                        </p>
+                      </div>
+                    ) : (
+                      allUserEmails.map((userEmail, i) => {
+                        const ocidIndex = i + 1;
+                        const isResettingThis = resetTargetEmail === userEmail;
+
+                        const handleAdminReset = async (e: React.FormEvent) => {
+                          e.preventDefault();
+                          if (!adminNewPassword) {
+                            toast.error("Please enter a new password");
+                            return;
+                          }
+                          if (adminNewPassword.length < 8) {
+                            toast.error(
+                              "Password must be at least 8 characters",
+                            );
+                            return;
+                          }
+                          if (adminNewPassword !== adminConfirmPassword) {
+                            toast.error("Passwords do not match");
+                            return;
+                          }
+                          try {
+                            const result = await adminResetPassword.mutateAsync(
+                              {
+                                email: userEmail,
+                                newPassword: adminNewPassword,
+                              },
+                            );
+                            if (result.ok) {
+                              toast.success(`Password reset for ${userEmail}`);
+                              setResetTargetEmail(null);
+                              setAdminNewPassword("");
+                              setAdminConfirmPassword("");
+                            } else {
+                              toast.error(
+                                result.message || "Failed to reset password",
+                              );
+                            }
+                          } catch {
+                            toast.error(
+                              "Failed to reset password. Please try again.",
+                            );
+                          }
+                        };
+
+                        return (
+                          <motion.div
+                            key={userEmail}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className="rounded-md bg-secondary/40 border border-border/50 overflow-hidden"
+                            data-ocid={`partner.users.item.${ocidIndex}`}
+                          >
+                            {/* User row */}
+                            <div className="flex items-center justify-between gap-2 p-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-gold text-[11px] font-body font-semibold">
+                                    {userEmail[0]?.toUpperCase() ?? "?"}
+                                  </span>
+                                </div>
+                                <p className="font-body text-sm text-foreground truncate">
+                                  {userEmail}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  if (isResettingThis) {
+                                    setResetTargetEmail(null);
+                                    setAdminNewPassword("");
+                                    setAdminConfirmPassword("");
+                                  } else {
+                                    setResetTargetEmail(userEmail);
+                                    setAdminNewPassword("");
+                                    setAdminConfirmPassword("");
+                                  }
+                                }}
+                                className="flex-shrink-0 border-border text-muted-foreground hover:text-gold hover:border-gold/40 font-body text-xs"
+                                data-ocid={`partner.users.edit_button.${ocidIndex}`}
+                              >
+                                <KeyRound className="w-3 h-3 mr-1" />
+                                {isResettingThis ? "Cancel" : "Reset"}
+                              </Button>
+                            </div>
+
+                            {/* Inline reset form */}
+                            {isResettingThis && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <Separator className="bg-border/40" />
+                                <form
+                                  onSubmit={handleAdminReset}
+                                  className="p-3 space-y-3"
+                                >
+                                  <p className="font-body text-[11px] text-muted-foreground/70">
+                                    Set a new password for{" "}
+                                    <span className="text-foreground font-medium">
+                                      {userEmail}
+                                    </span>
+                                  </p>
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="password"
+                                      placeholder="New password (min. 8 chars)"
+                                      value={adminNewPassword}
+                                      onChange={(e) =>
+                                        setAdminNewPassword(e.target.value)
+                                      }
+                                      className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus-visible:ring-gold focus-visible:border-gold h-9"
+                                      data-ocid={`partner.users.input.${ocidIndex}`}
+                                      autoComplete="new-password"
+                                    />
+                                    <Input
+                                      type="password"
+                                      placeholder="Confirm new password"
+                                      value={adminConfirmPassword}
+                                      onChange={(e) =>
+                                        setAdminConfirmPassword(e.target.value)
+                                      }
+                                      className="bg-background/50 border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus-visible:ring-gold focus-visible:border-gold h-9"
+                                      data-ocid={`partner.users.input.${ocidIndex}`}
+                                      autoComplete="new-password"
+                                    />
+                                  </div>
+                                  <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={adminResetPassword.isPending}
+                                    className="w-full bg-gold text-primary-foreground hover:bg-gold-deep font-body text-xs tracking-wide font-medium"
+                                    data-ocid={`partner.users.confirm_button.${ocidIndex}`}
+                                  >
+                                    {adminResetPassword.isPending ? (
+                                      <>
+                                        <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                                        Resetting…
+                                      </>
+                                    ) : (
+                                      <>
+                                        <KeyRound className="w-3 h-3 mr-1.5" />
+                                        Confirm Reset
+                                      </>
+                                    )}
+                                  </Button>
+                                </form>
+                              </motion.div>
                             )}
                           </motion.div>
                         );

@@ -350,3 +350,33 @@ export function useSubmitReview() {
     },
   });
 }
+
+// ── Admin: User Management ────────────────────────────────────────────────────
+
+export function useAllUserEmails() {
+  const { actor, isFetching } = useActor();
+  return useQuery<string[]>({
+    queryKey: ["allUserEmails"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUserEmails();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAdminResetPassword() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      email,
+      newPassword,
+    }: {
+      email: string;
+      newPassword: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.adminResetPassword(email, newPassword);
+    },
+  });
+}

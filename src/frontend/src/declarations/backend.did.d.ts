@@ -110,6 +110,7 @@ export interface http_request_result {
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addToCart' : ActorMethod<[bigint, bigint], undefined>,
+  'adminResetPassword' : ActorMethod<[string, string], AuthResult>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'clearCart' : ActorMethod<[], undefined>,
   'createCheckoutSession' : ActorMethod<
@@ -119,6 +120,7 @@ export interface _SERVICE {
   'getAllPartnerProducts' : ActorMethod<[], Array<PartnerProduct>>,
   'getAllPayoutRecords' : ActorMethod<[], Array<PayoutRecord>>,
   'getAllRefundRequests' : ActorMethod<[], Array<RefundRequest>>,
+  'getAllUserEmails' : ActorMethod<[], Array<string>>,
   'getAverageRating' : ActorMethod<[bigint], number>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
@@ -132,6 +134,7 @@ export interface _SERVICE {
   'getPayoutAccount' : ActorMethod<[], [] | [string]>,
   'getPerfumes' : ActorMethod<[], Array<Perfume>>,
   'getReviewsForPerfume' : ActorMethod<[bigint], Array<Review>>,
+  'getSecurityQuestion' : ActorMethod<[string], [] | [string]>,
   /**
    * / Get the email associated with a session token
    */
@@ -153,7 +156,14 @@ export interface _SERVICE {
   /**
    * / Register with email and password.
    */
-  'registerWithEmail' : ActorMethod<[string, string], AuthResult>,
+  'registerWithEmail' : ActorMethod<
+    [string, string, string, string],
+    AuthResult
+  >,
+  'resetPasswordWithSecurityAnswer' : ActorMethod<
+    [string, string, string],
+    AuthResult
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'savePayoutAccount' : ActorMethod<[string], undefined>,
   'setCommissionRate' : ActorMethod<[bigint], undefined>,

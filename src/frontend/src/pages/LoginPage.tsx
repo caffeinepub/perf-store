@@ -9,11 +9,13 @@ import { useActor } from "../hooks/useActor";
 interface LoginPageProps {
   onNavigateToSignup: () => void;
   onLoginSuccess: (email: string, token: string) => void;
+  onForgotPassword: () => void;
 }
 
 export function LoginPage({
   onNavigateToSignup,
   onLoginSuccess,
+  onForgotPassword,
 }: LoginPageProps) {
   const { actor } = useActor();
   const [email, setEmail] = useState("");
@@ -151,6 +153,18 @@ export function LoginPage({
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="login.input"
               />
+            </div>
+
+            {/* Forgot password */}
+            <div className="flex justify-end -mt-2">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-xs font-body text-muted-foreground hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded"
+                data-ocid="login.link"
+              >
+                Forgot password?
+              </button>
             </div>
 
             {errorMsg && (
