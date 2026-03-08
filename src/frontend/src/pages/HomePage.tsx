@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Phone, ShoppingBag } from "lucide-react";
+import { Phone, ShoppingBag, Star } from "lucide-react";
 import { motion } from "motion/react";
 import type { Perfume } from "../backend.d";
-import { usePerfumes } from "../hooks/useQueries";
+import { useAverageRating, usePerfumes } from "../hooks/useQueries";
 
 interface HomePageProps {
   onViewProduct: (perfume: Perfume) => void;
@@ -19,6 +19,30 @@ function ProductCardSkeleton() {
         <Skeleton className="h-9 w-full bg-muted mt-2" />
       </div>
     </div>
+  );
+}
+
+// Fetch & display star rating for a single product card
+function ProductRatingBadge({ perfumeId }: { perfumeId: bigint }) {
+  const { data: avg, isLoading } = useAverageRating(perfumeId);
+
+  if (isLoading) {
+    return <Skeleton className="h-3.5 w-10 bg-muted rounded-full" />;
+  }
+
+  if (!avg || avg === 0) {
+    return (
+      <span className="font-body text-[10px] text-muted-foreground/50">
+        No ratings
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-0.5 font-body text-[11px] text-gold font-semibold">
+      <Star className="w-3 h-3 fill-gold text-gold" />
+      {avg.toFixed(1)}
+    </span>
   );
 }
 
@@ -56,9 +80,12 @@ function ProductCard({ perfume, index, onView }: ProductCardProps) {
         <h3 className="font-display text-sm font-semibold text-foreground truncate mb-0.5">
           {perfume.name}
         </h3>
-        <p className="text-gold text-sm font-body font-semibold mb-3">
-          ${Number(perfume.price)}
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-gold text-sm font-body font-semibold">
+            ${Number(perfume.price)}
+          </p>
+          <ProductRatingBadge perfumeId={perfume.id} />
+        </div>
         <Button
           size="sm"
           onClick={onView}

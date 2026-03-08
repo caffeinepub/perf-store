@@ -6,37 +6,73 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 interface SignupPageProps {
   onNavigateToLogin: () => void;
+  onSignupSuccess: () => void;
 }
 
-export function SignupPage({ onNavigateToLogin }: SignupPageProps) {
-  const { login, isLoggingIn } = useInternetIdentity();
+export function SignupPage({
+  onNavigateToLogin,
+  onSignupSuccess,
+}: SignupPageProps) {
   const { actor } = useActor();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleCreateAccount = async () => {
+    setErrorMsg(null);
+
     if (!email.trim()) {
-      toast.error("Please enter your email");
+      setErrorMsg("Please enter your email");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setErrorMsg("Please enter a valid email address");
+      return;
+    }
+    if (!password) {
+      setErrorMsg("Please enter a password");
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMsg("Password must be at least 8 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match");
+      return;
+    }
+    if (!actor) {
+      setErrorMsg("Connection not ready. Please try again.");
+      return;
+    }
+
     setIsCreating(true);
     try {
-      if (actor) {
-        const name = email.split("@")[0] ?? email;
-        await actor.saveCallerUserProfile({ name });
+      const result = await actor.registerWithEmail(email.trim(), password);
+      if (result.ok) {
+        toast.success("Account created! Please sign in.");
+        onSignupSuccess();
+      } else {
+        setErrorMsg(
+          result.message || "Failed to create account. Please try again.",
+        );
       }
-      // Also trigger II login so they're actually authenticated
-      login();
-      onNavigateToLogin();
     } catch {
-      toast.error("Failed to create account");
+      setErrorMsg("Failed to create account. Please try again.");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleCreateAccount();
     }
   };
 
@@ -109,7 +145,9 @@ export function SignupPage({ onNavigateToLogin }: SignupPageProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="your@email.com"
+                autoComplete="email"
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="signup.input"
               />
@@ -127,19 +165,50 @@ export function SignupPage({ onNavigateToLogin }: SignupPageProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="signup.input"
               />
             </div>
 
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="signup-confirm-password"
+                className="text-muted-foreground text-xs font-body tracking-widest uppercase"
+              >
+                Confirm Password
+              </Label>
+              <Input
+                id="signup-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
+                data-ocid="signup.input"
+              />
+            </div>
+
+            {errorMsg && (
+              <p
+                className="text-destructive text-sm font-body"
+                data-ocid="signup.error_state"
+              >
+                {errorMsg}
+              </p>
+            )}
+
             <Button
               onClick={handleCreateAccount}
-              disabled={isCreating || isLoggingIn}
+              disabled={isCreating}
               className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold tracking-wide h-11"
               data-ocid="signup.primary_button"
             >
-              {isCreating || isLoggingIn ? (
+              {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating account...
@@ -170,6 +239,10 @@ export function SignupPage({ onNavigateToLogin }: SignupPageProps) {
             </Button>
           </div>
         </div>
+
+        <p className="text-center text-muted-foreground/60 text-xs mt-6 font-body">
+          Secured by Perf
+        </p>
       </motion.div>
     </div>
   );

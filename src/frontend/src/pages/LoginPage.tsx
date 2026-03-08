@@ -4,17 +4,57 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useActor } from "../hooks/useActor";
 
 interface LoginPageProps {
   onNavigateToSignup: () => void;
+  onLoginSuccess: (email: string, token: string) => void;
 }
 
-export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
-  const { login, isLoggingIn, isLoginError, loginError } =
-    useInternetIdentity();
+export function LoginPage({
+  onNavigateToSignup,
+  onLoginSuccess,
+}: LoginPageProps) {
+  const { actor } = useActor();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSignIn = async () => {
+    if (!email.trim()) {
+      setErrorMsg("Please enter your email");
+      return;
+    }
+    if (!password) {
+      setErrorMsg("Please enter your password");
+      return;
+    }
+    if (!actor) {
+      setErrorMsg("Connection not ready. Please try again.");
+      return;
+    }
+    setIsLoggingIn(true);
+    setErrorMsg(null);
+    try {
+      const result = await actor.loginWithEmail(email.trim(), password);
+      if (result.ok) {
+        onLoginSuccess(email.trim(), result.token);
+      } else {
+        setErrorMsg(result.message || "Invalid email or password");
+      }
+    } catch {
+      setErrorMsg("Login failed. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSignIn();
+    }
+  };
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
@@ -85,7 +125,9 @@ export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="your@email.com"
+                autoComplete="email"
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="login.input"
               />
@@ -103,23 +145,25 @@ export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="••••••••"
+                autoComplete="current-password"
                 className="bg-input/50 border-border text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-gold focus-visible:border-gold"
                 data-ocid="login.input"
               />
             </div>
 
-            {isLoginError && loginError && (
+            {errorMsg && (
               <p
-                className="text-destructive text-sm"
+                className="text-destructive text-sm font-body"
                 data-ocid="login.error_state"
               >
-                {loginError.message}
+                {errorMsg}
               </p>
             )}
 
             <Button
-              onClick={login}
+              onClick={handleSignIn}
               disabled={isLoggingIn}
               className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold tracking-wide h-11"
               data-ocid="login.primary_button"
@@ -127,7 +171,7 @@ export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
               {isLoggingIn ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
+                  Signing in...
                 </>
               ) : (
                 "Sign In"
@@ -157,7 +201,7 @@ export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
         </div>
 
         <p className="text-center text-muted-foreground/60 text-xs mt-6 font-body">
-          Secured by Internet Identity
+          Secured by Perf
         </p>
       </motion.div>
     </div>

@@ -10,17 +10,44 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AuthResult {
+  'ok' : boolean,
+  'token' : string,
+  'message' : string,
+}
 export interface CartItem { 'quantity' : bigint, 'perfumeId' : bigint }
 export interface Order {
   'id' : bigint,
   'total' : bigint,
   'timestamp' : bigint,
+  'stripePaymentIntentId' : string,
   'items' : Array<CartItem>,
+}
+export interface PartnerProduct {
+  'id' : bigint,
+  'status' : string,
+  'name' : string,
+  'partnerPrincipal' : Principal,
+  'submittedAt' : bigint,
+  'description' : string,
+  'imageUrl' : string,
+  'category' : string,
+  'price' : bigint,
 }
 export interface PartnerStats {
   'referralCode' : string,
   'commission' : bigint,
   'totalSales' : bigint,
+  'pendingPayout' : bigint,
+}
+export interface PayoutRecord {
+  'id' : bigint,
+  'platformCut' : bigint,
+  'partnerPrincipal' : Principal,
+  'productName' : string,
+  'timestamp' : bigint,
+  'partnerCut' : bigint,
+  'saleAmount' : bigint,
 }
 export interface Perfume {
   'id' : bigint,
@@ -28,26 +55,122 @@ export interface Perfume {
   'imageUrl' : string,
   'price' : bigint,
 }
+export interface RefundRequest {
+  'id' : bigint,
+  'status' : string,
+  'submittedAt' : bigint,
+  'description' : string,
+  'orderId' : bigint,
+  'requesterPrincipal' : Principal,
+  'reason' : string,
+}
+export interface Review {
+  'id' : bigint,
+  'orderId' : bigint,
+  'comment' : string,
+  'timestamp' : bigint,
+  'reviewerPrincipal' : Principal,
+  'rating' : bigint,
+  'perfumeId' : bigint,
+}
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addToCart' : ActorMethod<[bigint, bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'clearCart' : ActorMethod<[], undefined>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
+  'getAllPartnerProducts' : ActorMethod<[], Array<PartnerProduct>>,
+  'getAllPayoutRecords' : ActorMethod<[], Array<PayoutRecord>>,
+  'getAllRefundRequests' : ActorMethod<[], Array<RefundRequest>>,
+  'getAverageRating' : ActorMethod<[bigint], number>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCart' : ActorMethod<[], [] | [Array<CartItem>]>,
+  'getCommissionRate' : ActorMethod<[], bigint>,
+  'getMyPartnerProducts' : ActorMethod<[], Array<PartnerProduct>>,
+  'getMyPayoutHistory' : ActorMethod<[], Array<PayoutRecord>>,
+  'getMyRefundRequests' : ActorMethod<[], Array<RefundRequest>>,
   'getOrders' : ActorMethod<[], Array<Order>>,
   'getPartnerStats' : ActorMethod<[], PartnerStats>,
+  'getPayoutAccount' : ActorMethod<[], [] | [string]>,
   'getPerfumes' : ActorMethod<[], Array<Perfume>>,
+  'getReviewsForPerfume' : ActorMethod<[bigint], Array<Review>>,
+  /**
+   * / Get the email associated with a session token
+   */
+  'getSessionEmail' : ActorMethod<[string], [] | [string]>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'initializePerfumes' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'placeOrder' : ActorMethod<[], undefined>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
+  /**
+   * / Login with email and password; returns session token.
+   */
+  'loginWithEmail' : ActorMethod<[string, string], AuthResult>,
+  /**
+   * / Logout a session (invalidate token)
+   */
+  'logoutSession' : ActorMethod<[string], undefined>,
+  'placeOrder' : ActorMethod<[string], undefined>,
+  /**
+   * / Register with email and password.
+   */
+  'registerWithEmail' : ActorMethod<[string, string], AuthResult>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'savePayoutAccount' : ActorMethod<[string], undefined>,
+  'setCommissionRate' : ActorMethod<[bigint], undefined>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'submitPartnerProduct' : ActorMethod<
+    [string, string, bigint, string, string],
+    undefined
+  >,
+  'submitRefundRequest' : ActorMethod<[bigint, string, string], undefined>,
+  'submitReview' : ActorMethod<[bigint, bigint, bigint, string], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updatePartnerProductStatus' : ActorMethod<[bigint, string], undefined>,
+  'updateRefundStatus' : ActorMethod<[bigint, string], undefined>,
+  /**
+   * / Verify a session token (returns email if valid)
+   */
+  'verifySession' : ActorMethod<[string], [] | [string]>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

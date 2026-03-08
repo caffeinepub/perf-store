@@ -13,6 +13,42 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const ShoppingItem = IDL.Record({
+  'productName' : IDL.Text,
+  'currency' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'priceInCents' : IDL.Nat,
+  'productDescription' : IDL.Text,
+});
+export const PartnerProduct = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : IDL.Text,
+  'name' : IDL.Text,
+  'partnerPrincipal' : IDL.Principal,
+  'submittedAt' : IDL.Int,
+  'description' : IDL.Text,
+  'imageUrl' : IDL.Text,
+  'category' : IDL.Text,
+  'price' : IDL.Nat,
+});
+export const PayoutRecord = IDL.Record({
+  'id' : IDL.Nat,
+  'platformCut' : IDL.Nat,
+  'partnerPrincipal' : IDL.Principal,
+  'productName' : IDL.Text,
+  'timestamp' : IDL.Int,
+  'partnerCut' : IDL.Nat,
+  'saleAmount' : IDL.Nat,
+});
+export const RefundRequest = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : IDL.Text,
+  'submittedAt' : IDL.Int,
+  'description' : IDL.Text,
+  'orderId' : IDL.Nat,
+  'requesterPrincipal' : IDL.Principal,
+  'reason' : IDL.Text,
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const CartItem = IDL.Record({
   'quantity' : IDL.Nat,
@@ -22,12 +58,14 @@ export const Order = IDL.Record({
   'id' : IDL.Nat,
   'total' : IDL.Nat,
   'timestamp' : IDL.Int,
+  'stripePaymentIntentId' : IDL.Text,
   'items' : IDL.Vec(CartItem),
 });
 export const PartnerStats = IDL.Record({
   'referralCode' : IDL.Text,
   'commission' : IDL.Nat,
   'totalSales' : IDL.Nat,
+  'pendingPayout' : IDL.Nat,
 });
 export const Perfume = IDL.Record({
   'id' : IDL.Nat,
@@ -35,18 +73,78 @@ export const Perfume = IDL.Record({
   'imageUrl' : IDL.Text,
   'price' : IDL.Nat,
 });
+export const Review = IDL.Record({
+  'id' : IDL.Nat,
+  'orderId' : IDL.Nat,
+  'comment' : IDL.Text,
+  'timestamp' : IDL.Int,
+  'reviewerPrincipal' : IDL.Principal,
+  'rating' : IDL.Nat,
+  'perfumeId' : IDL.Nat,
+});
+export const StripeSessionStatus = IDL.Variant({
+  'completed' : IDL.Record({
+    'userPrincipal' : IDL.Opt(IDL.Text),
+    'response' : IDL.Text,
+  }),
+  'failed' : IDL.Record({ 'error' : IDL.Text }),
+});
+export const AuthResult = IDL.Record({
+  'ok' : IDL.Bool,
+  'token' : IDL.Text,
+  'message' : IDL.Text,
+});
+export const StripeConfiguration = IDL.Record({
+  'allowedCountries' : IDL.Vec(IDL.Text),
+  'secretKey' : IDL.Text,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addToCart' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'clearCart' : IDL.Func([], [], []),
+  'createCheckoutSession' : IDL.Func(
+      [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
+  'getAllPartnerProducts' : IDL.Func([], [IDL.Vec(PartnerProduct)], ['query']),
+  'getAllPayoutRecords' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
+  'getAllRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
+  'getAverageRating' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCart' : IDL.Func([], [IDL.Opt(IDL.Vec(CartItem))], ['query']),
+  'getCommissionRate' : IDL.Func([], [IDL.Nat], ['query']),
+  'getMyPartnerProducts' : IDL.Func([], [IDL.Vec(PartnerProduct)], ['query']),
+  'getMyPayoutHistory' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
+  'getMyRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
   'getOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
   'getPartnerStats' : IDL.Func([], [PartnerStats], ['query']),
+  'getPayoutAccount' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
   'getPerfumes' : IDL.Func([], [IDL.Vec(Perfume)], ['query']),
+  'getReviewsForPerfume' : IDL.Func([IDL.Nat], [IDL.Vec(Review)], ['query']),
+  'getSessionEmail' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+  'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -54,8 +152,30 @@ export const idlService = IDL.Service({
     ),
   'initializePerfumes' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'placeOrder' : IDL.Func([], [], []),
+  'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'loginWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
+  'logoutSession' : IDL.Func([IDL.Text], [], []),
+  'placeOrder' : IDL.Func([IDL.Text], [], []),
+  'registerWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'savePayoutAccount' : IDL.Func([IDL.Text], [], []),
+  'setCommissionRate' : IDL.Func([IDL.Nat], [], []),
+  'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'submitPartnerProduct' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
+  'submitRefundRequest' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
+  'submitReview' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text], [], []),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
+  'updatePartnerProductStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'updateRefundStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'verifySession' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -66,18 +186,56 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const ShoppingItem = IDL.Record({
+    'productName' : IDL.Text,
+    'currency' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'priceInCents' : IDL.Nat,
+    'productDescription' : IDL.Text,
+  });
+  const PartnerProduct = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : IDL.Text,
+    'name' : IDL.Text,
+    'partnerPrincipal' : IDL.Principal,
+    'submittedAt' : IDL.Int,
+    'description' : IDL.Text,
+    'imageUrl' : IDL.Text,
+    'category' : IDL.Text,
+    'price' : IDL.Nat,
+  });
+  const PayoutRecord = IDL.Record({
+    'id' : IDL.Nat,
+    'platformCut' : IDL.Nat,
+    'partnerPrincipal' : IDL.Principal,
+    'productName' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'partnerCut' : IDL.Nat,
+    'saleAmount' : IDL.Nat,
+  });
+  const RefundRequest = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : IDL.Text,
+    'submittedAt' : IDL.Int,
+    'description' : IDL.Text,
+    'orderId' : IDL.Nat,
+    'requesterPrincipal' : IDL.Principal,
+    'reason' : IDL.Text,
+  });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const CartItem = IDL.Record({ 'quantity' : IDL.Nat, 'perfumeId' : IDL.Nat });
   const Order = IDL.Record({
     'id' : IDL.Nat,
     'total' : IDL.Nat,
     'timestamp' : IDL.Int,
+    'stripePaymentIntentId' : IDL.Text,
     'items' : IDL.Vec(CartItem),
   });
   const PartnerStats = IDL.Record({
     'referralCode' : IDL.Text,
     'commission' : IDL.Nat,
     'totalSales' : IDL.Nat,
+    'pendingPayout' : IDL.Nat,
   });
   const Perfume = IDL.Record({
     'id' : IDL.Nat,
@@ -85,18 +243,79 @@ export const idlFactory = ({ IDL }) => {
     'imageUrl' : IDL.Text,
     'price' : IDL.Nat,
   });
+  const Review = IDL.Record({
+    'id' : IDL.Nat,
+    'orderId' : IDL.Nat,
+    'comment' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'reviewerPrincipal' : IDL.Principal,
+    'rating' : IDL.Nat,
+    'perfumeId' : IDL.Nat,
+  });
+  const StripeSessionStatus = IDL.Variant({
+    'completed' : IDL.Record({
+      'userPrincipal' : IDL.Opt(IDL.Text),
+      'response' : IDL.Text,
+    }),
+    'failed' : IDL.Record({ 'error' : IDL.Text }),
+  });
+  const AuthResult = IDL.Record({
+    'ok' : IDL.Bool,
+    'token' : IDL.Text,
+    'message' : IDL.Text,
+  });
+  const StripeConfiguration = IDL.Record({
+    'allowedCountries' : IDL.Vec(IDL.Text),
+    'secretKey' : IDL.Text,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addToCart' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'clearCart' : IDL.Func([], [], []),
+    'createCheckoutSession' : IDL.Func(
+        [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'getAllPartnerProducts' : IDL.Func(
+        [],
+        [IDL.Vec(PartnerProduct)],
+        ['query'],
+      ),
+    'getAllPayoutRecords' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
+    'getAllRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
+    'getAverageRating' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCart' : IDL.Func([], [IDL.Opt(IDL.Vec(CartItem))], ['query']),
+    'getCommissionRate' : IDL.Func([], [IDL.Nat], ['query']),
+    'getMyPartnerProducts' : IDL.Func([], [IDL.Vec(PartnerProduct)], ['query']),
+    'getMyPayoutHistory' : IDL.Func([], [IDL.Vec(PayoutRecord)], ['query']),
+    'getMyRefundRequests' : IDL.Func([], [IDL.Vec(RefundRequest)], ['query']),
     'getOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
     'getPartnerStats' : IDL.Func([], [PartnerStats], ['query']),
+    'getPayoutAccount' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
     'getPerfumes' : IDL.Func([], [IDL.Vec(Perfume)], ['query']),
+    'getReviewsForPerfume' : IDL.Func([IDL.Nat], [IDL.Vec(Review)], ['query']),
+    'getSessionEmail' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+    'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -104,8 +323,30 @@ export const idlFactory = ({ IDL }) => {
       ),
     'initializePerfumes' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'placeOrder' : IDL.Func([], [], []),
+    'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'loginWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
+    'logoutSession' : IDL.Func([IDL.Text], [], []),
+    'placeOrder' : IDL.Func([IDL.Text], [], []),
+    'registerWithEmail' : IDL.Func([IDL.Text, IDL.Text], [AuthResult], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'savePayoutAccount' : IDL.Func([IDL.Text], [], []),
+    'setCommissionRate' : IDL.Func([IDL.Nat], [], []),
+    'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'submitPartnerProduct' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
+    'submitRefundRequest' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
+    'submitReview' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text], [], []),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
+    'updatePartnerProductStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'updateRefundStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'verifySession' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
   });
 };
 

@@ -3,41 +3,50 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertCircle,
+  ArrowDownToLine,
   CheckCircle,
   CheckCircle2,
   Clock,
   Copy,
+  DollarSign,
+  Edit2,
   Link,
+  Loader2,
   LogOut,
   Package,
   PackagePlus,
   Percent,
   Phone,
+  RefreshCw,
+  Shield,
   TrendingUp,
   Users,
+  Wallet,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { usePartnerStats } from "../hooks/useQueries";
+import {
+  useAllRefundRequests,
+  useCommissionRate,
+  useIsAdmin,
+  usePartnerProducts,
+  usePartnerStats,
+  usePayoutAccount,
+  usePayoutHistory,
+  useSavePayoutAccount,
+  useSubmitPartnerProduct,
+  useUpdateRefundStatus,
+} from "../hooks/useQueries";
 
 type SubmissionStatus = "pending" | "approved" | "rejected";
-
-interface SubmittedProduct {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  description: string;
-  category: string;
-  status: SubmissionStatus;
-  submittedAt: string;
-}
 
 const statusConfig: Record<
   SubmissionStatus,
@@ -60,21 +69,74 @@ const statusConfig: Record<
   },
 };
 
+function formatDate(timestamp: bigint): string {
+  const ms = Number(timestamp) / 1_000_000;
+  const date = new Date(ms);
+  if (date.getFullYear() < 2020) {
+    return new Date(Number(timestamp) * 1000).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function maskAccountId(accountId: string): string {
+  if (accountId.length <= 8) return accountId;
+  const prefix = accountId.slice(0, 8);
+  const last4 = accountId.slice(-4);
+  return `${prefix}...${last4}`;
+}
+
+function shortenPrincipal(
+  principal: { toString: () => string } | string,
+): string {
+  const str = typeof principal === "string" ? principal : principal.toString();
+  if (str.length <= 12) return str;
+  return `${str.slice(0, 6)}…${str.slice(-4)}`;
+}
+
 export function PartnerPage() {
-  const { data: stats, isLoading } = usePartnerStats();
+  const { data: stats, isLoading: statsLoading } = usePartnerStats();
+  const { data: payoutAccount, isLoading: payoutAccountLoading } =
+    usePayoutAccount();
+  const { data: payoutHistory, isLoading: payoutHistoryLoading } =
+    usePayoutHistory();
+  const { data: commissionRate, isLoading: commissionLoading } =
+    useCommissionRate();
+  const { data: partnerProducts, isLoading: productsLoading } =
+    usePartnerProducts();
+  const { data: isAdmin } = useIsAdmin();
+  const { data: allRefundRequests, isLoading: refundsLoading } =
+    useAllRefundRequests();
+
+  const savePayoutAccount = useSavePayoutAccount();
+  const submitProduct = useSubmitPartnerProduct();
+  const updateRefundStatus = useUpdateRefundStatus();
   const { clear } = useInternetIdentity();
+
   const [copied, setCopied] = useState(false);
 
-  // Product submission form state
+  // Payout account form
+  const [connectAccountId, setConnectAccountId] = useState("");
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+
+  // Product submission form
   const [productName, setProductName] = useState("");
   const [productPrice, setProductPrice] = useState("");
   const [productImageUrl, setProductImageUrl] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [productCategory, setProductCategory] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedProducts, setSubmittedProducts] = useState<
-    SubmittedProduct[]
-  >([]);
+
+  const isLoading = statsLoading || commissionLoading;
+
+  const commissionRateNum = commissionRate ? Number(commissionRate) : 15;
+  const partnerShareNum = 100 - commissionRateNum;
 
   const referralLink = stats
     ? `perf.app/ref/${stats.referralCode}`
@@ -96,7 +158,28 @@ export function PartnerPage() {
     toast.success("Signed out successfully");
   };
 
-  const handleProductSubmit = (e: React.FormEvent) => {
+  const handleSavePayoutAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = connectAccountId.trim();
+    if (!trimmed) {
+      toast.error("Please enter a valid Stripe Connect Account ID");
+      return;
+    }
+    if (!trimmed.startsWith("acct_")) {
+      toast.error('Account ID must start with "acct_"');
+      return;
+    }
+    try {
+      await savePayoutAccount.mutateAsync(trimmed);
+      toast.success("Payout account connected successfully!");
+      setConnectAccountId("");
+      setIsEditingAccount(false);
+    } catch {
+      toast.error("Failed to save payout account. Please try again.");
+    }
+  };
+
+  const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (
@@ -115,25 +198,16 @@ export function PartnerPage() {
       return;
     }
 
-    setIsSubmitting(true);
-
-    // Simulate async submission
-    setTimeout(() => {
-      const newProduct: SubmittedProduct = {
-        id: `prod_${Date.now()}`,
+    try {
+      // Convert dollars to cents and then to bigint
+      const priceInCents = BigInt(Math.round(price * 100));
+      await submitProduct.mutateAsync({
         name: productName.trim(),
-        price,
         imageUrl: productImageUrl.trim(),
+        price: priceInCents,
         description: productDescription.trim(),
         category: productCategory.trim(),
-        status: "pending",
-        submittedAt: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-      };
-      setSubmittedProducts((prev) => [newProduct, ...prev]);
+      });
 
       // Reset form
       setProductName("");
@@ -141,30 +215,46 @@ export function PartnerPage() {
       setProductImageUrl("");
       setProductDescription("");
       setProductCategory("");
-      setIsSubmitting(false);
 
       toast.success(
         "Product submitted! It will appear in the store once approved.",
       );
-    }, 800);
+    } catch {
+      toast.error("Failed to submit product. Please try again.");
+    }
   };
 
   const statCards = [
     {
       icon: TrendingUp,
       label: "Total Sales",
-      value: stats ? `$${Number(stats.totalSales).toLocaleString()}` : "$0",
+      value: stats
+        ? `$${(Number(stats.totalSales) / 100).toFixed(2)}`
+        : "$0.00",
       description: "Lifetime revenue",
       ocid: "partner.card.1",
     },
     {
       icon: Percent,
-      label: "Commission",
-      value: stats ? `$${Number(stats.commission).toLocaleString()}` : "$0",
-      description: "10% of total sales",
+      label: "Commission Earned",
+      value: stats
+        ? `$${(Number(stats.commission) / 100).toFixed(2)}`
+        : "$0.00",
+      description: `${partnerShareNum}% of each sale`,
       ocid: "partner.card.2",
     },
+    {
+      icon: Wallet,
+      label: "Pending Payout",
+      value: stats
+        ? `$${(Number(stats.pendingPayout) / 100).toFixed(2)}`
+        : "$0.00",
+      description: "Awaiting transfer",
+      ocid: "partner.card.3",
+    },
   ];
+
+  const isPayoutConnected = !!payoutAccount && !isEditingAccount;
 
   return (
     <div className="min-h-full bg-background" data-ocid="partner.page">
@@ -193,7 +283,7 @@ export function PartnerPage() {
         </div>
       </header>
 
-      <main className="px-4 py-6 space-y-4">
+      <main className="px-4 py-6 space-y-4 pb-24">
         {isLoading ? (
           <div className="space-y-4" data-ocid="partner.loading_state">
             {["p1", "p2", "p3"].map((key) => (
@@ -246,13 +336,155 @@ export function PartnerPage() {
               );
             })}
 
+            {/* ── PAYOUT ACCOUNT ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <Card
+                className="bg-card border-border overflow-hidden"
+                data-ocid="partner.panel"
+              >
+                {/* Trust strip */}
+                <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+                <CardHeader className="pb-3 pt-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-md bg-emerald-950/60 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <Shield className="text-emerald-400 w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="font-display text-base font-bold text-foreground">
+                        Payout Method
+                      </CardTitle>
+                      <p className="font-body text-xs text-muted-foreground mt-0.5">
+                        Receive your share automatically on each sale
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  {payoutAccountLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-10 w-full bg-muted" />
+                      <Skeleton className="h-4 w-3/4 bg-muted" />
+                    </div>
+                  ) : isPayoutConnected && payoutAccount ? (
+                    /* Connected state */
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/20">
+                        <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-xs text-emerald-400 font-semibold tracking-wide uppercase mb-0.5">
+                            Connected
+                          </p>
+                          <p className="font-body text-sm text-foreground font-medium truncate">
+                            {maskAccountId(payoutAccount)}
+                          </p>
+                        </div>
+                        <Badge className="bg-emerald-950/50 text-emerald-400 border-emerald-500/30 font-body text-[10px] flex-shrink-0">
+                          Active
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setIsEditingAccount(true);
+                          setConnectAccountId(payoutAccount);
+                        }}
+                        className="border-border text-muted-foreground hover:text-foreground font-body text-xs"
+                        data-ocid="partner.edit_button"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                        Change Account
+                      </Button>
+                      <p className="font-body text-[11px] text-muted-foreground/60 leading-relaxed">
+                        Your share ({partnerShareNum}%) is transferred within 2
+                        business days of each sale.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Connect form */
+                    <form
+                      onSubmit={handleSavePayoutAccount}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="connect-account-id"
+                          className="font-body text-xs text-muted-foreground tracking-widest uppercase"
+                        >
+                          Stripe Connect Account ID
+                        </Label>
+                        <Input
+                          id="connect-account-id"
+                          placeholder="acct_1234567890"
+                          value={connectAccountId}
+                          onChange={(e) => setConnectAccountId(e.target.value)}
+                          className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                          data-ocid="partner.input"
+                        />
+                      </div>
+
+                      <p className="font-body text-[11px] text-muted-foreground/70 leading-relaxed bg-secondary/40 rounded-md p-3 border border-border/50">
+                        <span className="text-gold font-medium">
+                          How it works:{" "}
+                        </span>
+                        Connect your Stripe account to receive automatic payouts
+                        when your products sell. Your share ({partnerShareNum}%)
+                        is transferred within 2 business days of each sale. The
+                        platform retains {commissionRateNum}% as a service fee.
+                      </p>
+
+                      <div className="flex gap-2">
+                        <Button
+                          type="submit"
+                          disabled={savePayoutAccount.isPending}
+                          className="flex-1 bg-gold text-primary-foreground hover:bg-gold-deep font-body text-sm tracking-wide font-medium"
+                          data-ocid="partner.save_button"
+                        >
+                          {savePayoutAccount.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving…
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="w-4 h-4 mr-2" />
+                              Connect Account
+                            </>
+                          )}
+                        </Button>
+                        {isEditingAccount && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setIsEditingAccount(false);
+                              setConnectAccountId("");
+                            }}
+                            className="border-border text-muted-foreground hover:text-foreground font-body text-sm"
+                            data-ocid="partner.cancel_button"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
             {/* Referral link card */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.42 }}
               className="bg-card border border-border rounded-lg p-5 hover:border-gold/30 transition-colors"
-              data-ocid="partner.card.3"
+              data-ocid="partner.card.4"
             >
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
@@ -292,13 +524,27 @@ export function PartnerPage() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.48 }}
               className="bg-secondary/50 border border-border rounded-lg p-4"
             >
               <p className="font-body text-xs text-muted-foreground leading-relaxed">
                 <span className="text-gold font-medium">Partner program: </span>
-                Earn 10% commission on every sale referred through your unique
-                link. Share your referral link to start earning today.
+                {commissionLoading ? (
+                  <span className="inline-block w-24 h-3 bg-muted rounded animate-pulse" />
+                ) : (
+                  <>
+                    You earn{" "}
+                    <span className="text-foreground font-semibold">
+                      {partnerShareNum}%
+                    </span>{" "}
+                    of each sale. The platform takes{" "}
+                    <span className="text-foreground font-semibold">
+                      {commissionRateNum}%
+                    </span>
+                    . Share your referral link to start earning today. Payouts
+                    are automatic once you connect your account.
+                  </>
+                )}
               </p>
             </motion.div>
 
@@ -306,7 +552,7 @@ export function PartnerPage() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.52 }}
             >
               <Card className="bg-card border-border" data-ocid="partner.panel">
                 <CardHeader className="pb-4">
@@ -424,13 +670,13 @@ export function PartnerPage() {
 
                     <Button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={submitProduct.isPending}
                       className="w-full bg-gold text-primary-foreground hover:bg-gold-deep font-body text-sm tracking-wide font-medium transition-all duration-200 disabled:opacity-60"
                       data-ocid="partner.submit_button"
                     >
-                      {isSubmitting ? (
+                      {submitProduct.isPending ? (
                         <>
-                          <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin mr-2" />
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Submitting…
                         </>
                       ) : (
@@ -445,46 +691,75 @@ export function PartnerPage() {
               </Card>
             </motion.div>
 
-            {/* ── SUBMITTED PRODUCTS LIST ── */}
-            {submittedProducts.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Card className="bg-card border-border">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
-                        <Package className="text-gold w-5 h-5" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-display text-base font-bold text-foreground">
-                          Your Submissions
-                        </CardTitle>
-                        <p className="font-body text-xs text-muted-foreground mt-0.5">
-                          {submittedProducts.length} product
-                          {submittedProducts.length !== 1 ? "s" : ""} submitted
-                        </p>
-                      </div>
+            {/* ── SUBMITTED PRODUCTS LIST (from backend) ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.56 }}
+            >
+              <Card className="bg-card border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+                      <Package className="text-gold w-5 h-5" />
                     </div>
-                  </CardHeader>
+                    <div>
+                      <CardTitle className="font-display text-base font-bold text-foreground">
+                        Your Submissions
+                      </CardTitle>
+                      <p className="font-body text-xs text-muted-foreground mt-0.5">
+                        {productsLoading
+                          ? "Loading…"
+                          : `${partnerProducts?.length ?? 0} product${(partnerProducts?.length ?? 0) !== 1 ? "s" : ""} submitted`}
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
 
-                  <CardContent className="space-y-3">
-                    {submittedProducts.map((product, i) => {
-                      const cfg = statusConfig[product.status];
+                <CardContent className="space-y-3">
+                  {productsLoading ? (
+                    <div
+                      className="space-y-2"
+                      data-ocid="partner.loading_state"
+                    >
+                      {["s1", "s2"].map((k) => (
+                        <div
+                          key={k}
+                          className="flex gap-3 p-3 rounded-md bg-secondary/40 border border-border/50"
+                        >
+                          <Skeleton className="w-12 h-12 rounded bg-muted flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-1/2 bg-muted" />
+                            <Skeleton className="h-3 w-1/3 bg-muted" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !partnerProducts || partnerProducts.length === 0 ? (
+                    <div
+                      className="text-center py-6"
+                      data-ocid="partner.empty_state"
+                    >
+                      <Package className="text-muted-foreground w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="font-body text-sm text-muted-foreground">
+                        No submissions yet. List your first product above.
+                      </p>
+                    </div>
+                  ) : (
+                    partnerProducts.map((product, i) => {
+                      const status = product.status as SubmissionStatus;
+                      const cfg = statusConfig[status] ?? statusConfig.pending;
                       const StatusIcon = cfg.icon;
                       const ocidIndex = i + 1;
                       return (
                         <motion.div
-                          key={product.id}
+                          key={String(product.id)}
                           initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.05 }}
                           className="flex items-start gap-3 p-3 rounded-md bg-secondary/40 border border-border/50"
                           data-ocid={`partner.item.${ocidIndex}`}
                         >
-                          {/* Thumbnail */}
                           {product.imageUrl ? (
                             <img
                               src={product.imageUrl}
@@ -510,18 +785,285 @@ export function PartnerPage() {
                               </Badge>
                             </div>
                             <p className="font-body text-xs text-gold font-semibold mt-0.5">
-                              ${product.price.toFixed(2)}
+                              ${(Number(product.price) / 100).toFixed(2)}
                               <span className="text-muted-foreground font-normal ml-2">
                                 · {product.category}
                               </span>
                             </p>
                             <p className="font-body text-[10px] text-muted-foreground/60 mt-1">
-                              Submitted {product.submittedAt}
+                              Submitted {formatDate(product.submittedAt)}
                             </p>
                           </div>
                         </motion.div>
                       );
-                    })}
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* ── PAYOUT HISTORY ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Card className="bg-card border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+                      <ArrowDownToLine className="text-gold w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="font-display text-base font-bold text-foreground">
+                        Payout History
+                      </CardTitle>
+                      <p className="font-body text-xs text-muted-foreground mt-0.5">
+                        Earnings from your product sales
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-2">
+                  {payoutHistoryLoading ? (
+                    <div
+                      className="space-y-2"
+                      data-ocid="partner.loading_state"
+                    >
+                      {["h1", "h2"].map((k) => (
+                        <div
+                          key={k}
+                          className="p-3 rounded-md bg-secondary/40 border border-border/50 space-y-2"
+                        >
+                          <div className="flex justify-between">
+                            <Skeleton className="h-4 w-1/3 bg-muted" />
+                            <Skeleton className="h-4 w-1/4 bg-muted" />
+                          </div>
+                          <Skeleton className="h-3 w-1/2 bg-muted" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !payoutHistory || payoutHistory.length === 0 ? (
+                    <div
+                      className="text-center py-6"
+                      data-ocid="partner.empty_state"
+                    >
+                      <DollarSign className="text-muted-foreground w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="font-body text-sm text-muted-foreground">
+                        No payouts yet.
+                      </p>
+                      <p className="font-body text-xs text-muted-foreground/60 mt-1">
+                        Once your products sell, your earnings appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    payoutHistory.map((record, i) => {
+                      const ocidIndex = i + 1;
+                      return (
+                        <motion.div
+                          key={String(record.id)}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className="p-3 rounded-md bg-secondary/40 border border-border/50"
+                          data-ocid={`partner.row.${ocidIndex}`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <p className="font-body text-sm font-medium text-foreground truncate flex-1">
+                              {record.productName}
+                            </p>
+                            <span className="font-body text-sm font-bold text-emerald-400 flex-shrink-0">
+                              +${(Number(record.partnerCut) / 100).toFixed(2)}
+                            </span>
+                          </div>
+                          <Separator className="bg-border/40 my-1.5" />
+                          <div className="flex items-center justify-between text-[11px] font-body text-muted-foreground/70">
+                            <span>
+                              Sale: $
+                              {(Number(record.saleAmount) / 100).toFixed(2)}
+                              <span className="mx-1.5 opacity-40">·</span>
+                              Platform: $
+                              {(Number(record.platformCut) / 100).toFixed(2)}
+                            </span>
+                            <span>{formatDate(record.timestamp)}</span>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* ── ADMIN: REFUND REQUESTS ── */}
+            {isAdmin && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.63 }}
+              >
+                <Card className="bg-card border-border">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+                        <RefreshCw className="text-gold w-5 h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                          Refund Requests
+                          <Badge className="bg-secondary text-gold border-gold/30 font-body text-[10px]">
+                            Admin
+                          </Badge>
+                        </CardTitle>
+                        <p className="font-body text-xs text-muted-foreground mt-0.5">
+                          {refundsLoading
+                            ? "Loading…"
+                            : `${allRefundRequests?.length ?? 0} total request${(allRefundRequests?.length ?? 0) !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3">
+                    {refundsLoading ? (
+                      <div
+                        className="space-y-2"
+                        data-ocid="partner.loading_state"
+                      >
+                        {["r1", "r2"].map((k) => (
+                          <div
+                            key={k}
+                            className="p-3 rounded-md bg-secondary/40 border border-border/50 space-y-2"
+                          >
+                            <div className="flex justify-between">
+                              <Skeleton className="h-4 w-1/3 bg-muted" />
+                              <Skeleton className="h-4 w-16 bg-muted" />
+                            </div>
+                            <Skeleton className="h-3 w-1/2 bg-muted" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : !allRefundRequests || allRefundRequests.length === 0 ? (
+                      <div
+                        className="text-center py-6"
+                        data-ocid="partner.refunds.empty_state"
+                      >
+                        <AlertCircle className="text-muted-foreground w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-body text-sm text-muted-foreground">
+                          No refund requests yet.
+                        </p>
+                      </div>
+                    ) : (
+                      allRefundRequests.map((req, i) => {
+                        const ocidIndex = i + 1;
+                        const isPending = req.status === "pending";
+                        const statusCfg =
+                          statusConfig[req.status as SubmissionStatus] ??
+                          statusConfig.pending;
+                        const StatusIcon = statusCfg.icon;
+
+                        const handleApprove = async () => {
+                          try {
+                            await updateRefundStatus.mutateAsync({
+                              requestId: req.id,
+                              status: "approved",
+                            });
+                            toast.success("Refund approved");
+                          } catch {
+                            toast.error("Failed to approve refund");
+                          }
+                        };
+
+                        const handleReject = async () => {
+                          try {
+                            await updateRefundStatus.mutateAsync({
+                              requestId: req.id,
+                              status: "rejected",
+                            });
+                            toast.success("Refund rejected");
+                          } catch {
+                            toast.error("Failed to reject refund");
+                          }
+                        };
+
+                        return (
+                          <motion.div
+                            key={String(req.id)}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className="p-3 rounded-md bg-secondary/40 border border-border/50"
+                            data-ocid={`partner.refund.item.${ocidIndex}`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-body text-xs text-muted-foreground tracking-widest uppercase mb-0.5">
+                                  Order #{String(req.orderId).padStart(4, "0")}
+                                </p>
+                                <p className="font-body text-sm font-medium text-foreground">
+                                  {req.reason}
+                                </p>
+                              </div>
+                              <Badge
+                                className={`${statusCfg.className} font-body text-[10px] tracking-wide flex-shrink-0 flex items-center gap-1`}
+                              >
+                                <StatusIcon className="w-2.5 h-2.5" />
+                                {statusCfg.label}
+                              </Badge>
+                            </div>
+
+                            {req.description && (
+                              <p className="font-body text-xs text-muted-foreground/70 leading-relaxed mb-2">
+                                {req.description}
+                              </p>
+                            )}
+
+                            <Separator className="bg-border/40 my-2" />
+
+                            <div className="flex items-center justify-between text-[11px] font-body text-muted-foreground/60">
+                              <span className="truncate">
+                                {shortenPrincipal(req.requesterPrincipal)}
+                              </span>
+                              <span className="flex-shrink-0 ml-2">
+                                {formatDate(req.submittedAt)}
+                              </span>
+                            </div>
+
+                            {isPending && (
+                              <div className="flex gap-2 mt-3">
+                                <Button
+                                  size="sm"
+                                  onClick={handleApprove}
+                                  disabled={updateRefundStatus.isPending}
+                                  className="flex-1 bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-400 border border-emerald-500/30 hover:border-emerald-400/50 font-body text-xs transition-all duration-200"
+                                  data-ocid={`partner.refund.confirm_button.${ocidIndex}`}
+                                >
+                                  {updateRefundStatus.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Approve
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={handleReject}
+                                  disabled={updateRefundStatus.isPending}
+                                  className="flex-1 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/30 hover:border-destructive/50 font-body text-xs transition-all duration-200"
+                                  data-ocid={`partner.refund.delete_button.${ocidIndex}`}
+                                >
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -531,7 +1073,7 @@ export function PartnerPage() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.65 }}
             >
               <Card className="bg-card border-gold/20 overflow-hidden">
                 {/* Subtle gold glow strip */}

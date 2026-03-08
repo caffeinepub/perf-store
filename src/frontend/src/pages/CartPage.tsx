@@ -1,20 +1,75 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, PackageCheck, ShoppingCart } from "lucide-react";
+import {
+  CheckCircle,
+  CreditCard,
+  Loader2,
+  PackageCheck,
+  ShoppingCart,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useCart, usePerfumes, usePlaceOrder } from "../hooks/useQueries";
+import { useActor } from "../hooks/useActor";
+import {
+  useCart,
+  useCreateCheckoutSession,
+  usePerfumes,
+  usePlaceOrder,
+} from "../hooks/useQueries";
 
 interface CartPageProps {
   onOrderPlaced: () => void;
+  stripeSessionId?: string;
 }
 
-export function CartPage({ onOrderPlaced }: CartPageProps) {
+export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const { data: cartItems, isLoading: cartLoading } = useCart();
   const { data: perfumes, isLoading: perfumesLoading } = usePerfumes();
   const placeOrder = usePlaceOrder();
+  const createCheckout = useCreateCheckoutSession();
+  const { actor } = useActor();
+
+  const [sessionProcessed, setSessionProcessed] = useState(false);
+  const [isProcessingReturn, setIsProcessingReturn] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   const isLoading = cartLoading || perfumesLoading;
+
+  // Handle Stripe return with session ID
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onOrderPlaced and placeOrder.mutateAsync are stable refs
+  useEffect(() => {
+    if (!stripeSessionId || sessionProcessed || !actor) return;
+
+    const processSession = async () => {
+      setIsProcessingReturn(true);
+      setSessionProcessed(true);
+      try {
+        const status = await actor.getStripeSessionStatus(stripeSessionId);
+        if (status.__kind__ === "completed") {
+          await placeOrder.mutateAsync(stripeSessionId);
+          setOrderSuccess(true);
+          toast.success("Payment successful! Your order has been placed.");
+          // Clean URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete("session_id");
+          window.history.replaceState({}, "", url.toString());
+          setTimeout(() => {
+            onOrderPlaced();
+          }, 2000);
+        } else if (status.__kind__ === "failed") {
+          toast.error(`Payment failed: ${status.failed.error}`);
+        }
+      } catch (err) {
+        console.error("Session processing error:", err);
+        toast.error("Could not verify payment. Please contact support.");
+      } finally {
+        setIsProcessingReturn(false);
+      }
+    };
+
+    processSession();
+  }, [stripeSessionId, actor, sessionProcessed]);
 
   // Build enriched cart items
   const enrichedCart =
@@ -26,7 +81,9 @@ export function CartPage({ onOrderPlaced }: CartPageProps) {
               ? {
                   ...item,
                   name: perfume.name,
-                  price: Number(perfume.price),
+                  // price is in cents, divide by 100 for display
+                  priceInCents: Number(perfume.price),
+                  priceDisplay: Number(perfume.price) / 100,
                   imageUrl: perfume.imageUrl,
                 }
               : null;
@@ -34,21 +91,85 @@ export function CartPage({ onOrderPlaced }: CartPageProps) {
           .filter(Boolean)
       : [];
 
-  const total = enrichedCart.reduce(
-    (sum, item) => sum + (item ? item.price * Number(item.quantity) : 0),
+  const totalCents = enrichedCart.reduce(
+    (sum, item) => sum + (item ? item.priceInCents * Number(item.quantity) : 0),
     0,
   );
+  const totalDisplay = totalCents / 100;
 
   const handleCheckout = async () => {
     if (enrichedCart.length === 0) return;
     try {
-      await placeOrder.mutateAsync();
-      toast.success("Order placed successfully!");
-      onOrderPlaced();
-    } catch {
-      toast.error("Checkout failed. Please try again.");
+      const items = enrichedCart.filter(Boolean).map((item) => ({
+        productName: item!.name,
+        currency: "usd",
+        quantity: item!.quantity,
+        priceInCents: BigInt(item!.priceInCents),
+        productDescription: item!.name,
+      }));
+
+      const successUrl = `${window.location.origin}?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = window.location.origin;
+
+      const checkoutUrl = await createCheckout.mutateAsync({
+        items,
+        successUrl,
+        cancelUrl,
+      });
+
+      // Redirect to Stripe hosted checkout
+      window.location.href = checkoutUrl;
+    } catch (err) {
+      console.error("Checkout error:", err);
+      toast.error("Could not start checkout. Please try again.");
     }
   };
+
+  // Show processing overlay when returning from Stripe
+  if (isProcessingReturn) {
+    return (
+      <div
+        className="min-h-full bg-background flex items-center justify-center"
+        data-ocid="cart.loading_state"
+      >
+        <div className="text-center px-6">
+          <Loader2 className="text-gold w-10 h-10 animate-spin mx-auto mb-4" />
+          <h2 className="font-display text-xl font-bold text-foreground mb-2">
+            Verifying Payment
+          </h2>
+          <p className="font-body text-sm text-muted-foreground">
+            Please wait while we confirm your transaction…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show success state
+  if (orderSuccess) {
+    return (
+      <div
+        className="min-h-full bg-background flex items-center justify-center"
+        data-ocid="cart.success_state"
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center px-6"
+        >
+          <div className="w-20 h-20 rounded-full bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
+            <CheckCircle className="text-emerald-400 w-10 h-10" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+            Order Confirmed
+          </h2>
+          <p className="font-body text-sm text-muted-foreground">
+            Redirecting to your orders…
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-background" data-ocid="cart.page">
@@ -137,7 +258,8 @@ export function CartPage({ onOrderPlaced }: CartPageProps) {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-gold font-body font-semibold text-sm">
-                        ${item.price * Number(item.quantity)}
+                        $
+                        {(item.priceDisplay * Number(item.quantity)).toFixed(2)}
                       </p>
                     </div>
                   </motion.div>
@@ -156,27 +278,30 @@ export function CartPage({ onOrderPlaced }: CartPageProps) {
               Total
             </span>
             <span className="font-display text-2xl font-bold text-gold">
-              ${total.toFixed(2)}
+              ${totalDisplay.toFixed(2)}
             </span>
           </div>
           <Button
             onClick={handleCheckout}
-            disabled={placeOrder.isPending}
+            disabled={createCheckout.isPending}
             className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold tracking-wider h-12 text-base"
             data-ocid="cart.primary_button"
           >
-            {placeOrder.isPending ? (
+            {createCheckout.isPending ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processing...
+                Preparing Checkout…
               </>
             ) : (
               <>
-                <PackageCheck className="mr-2 h-5 w-5" />
-                Checkout
+                <CreditCard className="mr-2 h-5 w-5" />
+                Pay Securely
               </>
             )}
           </Button>
+          <p className="text-center font-body text-[10px] text-muted-foreground/60 mt-2">
+            Powered by Stripe · Secure payment
+          </p>
         </div>
       )}
     </div>
