@@ -12,12 +12,12 @@ import Principal "mo:core/Principal";
 import Float "mo:core/Float";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import Migration "migration";
+
 
 import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 
-(with migration = Migration.run)
+
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);

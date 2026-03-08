@@ -1,0 +1,39 @@
+{
+  "id": "lema-perf-store-app",
+  "name": "Perf Store by LEMA",
+  "short_name": "Perf",
+  "description": "Shop premium perfumes online. Browse, buy, and track orders from the Perf Store. A LEMA company product.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/assets/generated/pwa-icon.dim_512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "company": "LEMA",
+  "build_date": "2026-03-08",
+  "build_year": "2026",
+  "build_time": "20:33:41 UTC",
+  "build_timestamp": "2026-03-08T20:33:41.734Z",
+  "service_provider": {
+    "name": "Adrian Were",
+    "phone": "0706130805"
+  }
+}
