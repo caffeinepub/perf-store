@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   AlertCircle,
   ArrowDownToLine,
+  Camera,
   CheckCircle,
   CheckCircle2,
   Clock,
@@ -26,13 +27,15 @@ import {
   RefreshCw,
   Shield,
   TrendingUp,
+  Upload,
   UserCog,
   Users,
   Wallet,
+  X,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -144,6 +147,15 @@ export function PartnerPage() {
   const [productDescription, setProductDescription] = useState("");
   const [productCategory, setProductCategory] = useState("");
 
+  // Image input state
+  const [imageInputMode, setImageInputMode] = useState<"upload" | "url">(
+    "upload",
+  );
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   const isLoading = statsLoading || commissionLoading;
 
   const commissionRateNum = commissionRate ? Number(commissionRate) : 15;
@@ -209,12 +221,26 @@ export function PartnerPage() {
       return;
     }
 
+    let imageUrl = "";
+
+    if (imageInputMode === "upload" && productImageFile) {
+      // Read file as data URL
+      imageUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(productImageFile);
+      });
+    } else if (imageInputMode === "url") {
+      imageUrl = productImageUrl.trim();
+    }
+
     try {
       // Convert dollars to cents and then to bigint
       const priceInCents = BigInt(Math.round(price * 100));
       await submitProduct.mutateAsync({
         name: productName.trim(),
-        imageUrl: productImageUrl.trim(),
+        imageUrl,
         price: priceInCents,
         description: productDescription.trim(),
         category: productCategory.trim(),
@@ -226,6 +252,9 @@ export function PartnerPage() {
       setProductImageUrl("");
       setProductDescription("");
       setProductCategory("");
+      setProductImageFile(null);
+      setProductImagePreview("");
+      setImageInputMode("upload");
 
       toast.success(
         "Product submitted! It will appear in the store once approved.",
@@ -642,22 +671,152 @@ export function PartnerPage() {
                       </div>
                     </div>
 
-                    {/* Image URL */}
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="product-image"
-                        className="font-body text-xs text-muted-foreground tracking-widest uppercase"
-                      >
-                        Image URL
+                    {/* Product Image */}
+                    <div className="space-y-2">
+                      <Label className="font-body text-xs text-muted-foreground tracking-widest uppercase">
+                        Product Image
                       </Label>
-                      <Input
-                        id="product-image"
-                        placeholder="https://example.com/image.jpg"
-                        value={productImageUrl}
-                        onChange={(e) => setProductImageUrl(e.target.value)}
-                        className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
-                        data-ocid="partner.input"
-                      />
+
+                      {/* Mode toggle */}
+                      <div className="flex gap-1 p-1 bg-secondary rounded-lg w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setImageInputMode("upload")}
+                          className={`px-3 py-1.5 rounded-md font-body text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+                            imageInputMode === "upload"
+                              ? "bg-gold text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Upload / Camera
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setImageInputMode("url")}
+                          className={`px-3 py-1.5 rounded-md font-body text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+                            imageInputMode === "url"
+                              ? "bg-gold text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Enter URL
+                        </button>
+                      </div>
+
+                      {imageInputMode === "upload" ? (
+                        <div className="space-y-2">
+                          {/* Hidden file inputs */}
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setProductImageFile(file);
+                                setProductImagePreview(
+                                  URL.createObjectURL(file),
+                                );
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                          <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setProductImageFile(file);
+                                setProductImagePreview(
+                                  URL.createObjectURL(file),
+                                );
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+
+                          {productImageFile ? (
+                            /* Preview */
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/60 border border-border/60">
+                              <img
+                                src={productImagePreview}
+                                alt="Product preview"
+                                className="w-20 h-20 rounded-md object-cover flex-shrink-0 border border-border/40"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-body text-xs text-foreground font-medium truncate">
+                                  {productImageFile.name}
+                                </p>
+                                <p className="font-body text-[11px] text-muted-foreground mt-0.5">
+                                  {(productImageFile.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setProductImageFile(null);
+                                  if (productImagePreview) {
+                                    URL.revokeObjectURL(productImagePreview);
+                                  }
+                                  setProductImagePreview("");
+                                }}
+                                className="flex-shrink-0 w-6 h-6 rounded-full bg-destructive/20 hover:bg-destructive/40 text-destructive flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+                                aria-label="Remove image"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            /* Drop zone */
+                            <div
+                              className="border-2 border-dashed border-border/60 hover:border-gold/40 rounded-lg p-5 flex flex-col items-center gap-3 transition-colors duration-150"
+                              data-ocid="partner.dropzone"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex flex-col items-center gap-3 w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-md"
+                                data-ocid="partner.upload_button"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                                  <Upload className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="font-body text-sm text-foreground font-medium">
+                                    Tap to choose a JPG or PNG
+                                  </p>
+                                  <p className="font-body text-[11px] text-muted-foreground mt-0.5">
+                                    Max file size: unlimited
+                                  </p>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cameraInputRef.current?.click()}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary border border-border/60 hover:border-gold/40 font-body text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                              >
+                                <Camera className="w-3.5 h-3.5" />
+                                Take a Photo
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* URL mode */
+                        <Input
+                          id="product-image"
+                          placeholder="https://example.com/image.jpg"
+                          value={productImageUrl}
+                          onChange={(e) => setProductImageUrl(e.target.value)}
+                          className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                          data-ocid="partner.input"
+                        />
+                      )}
                     </div>
 
                     {/* Description */}

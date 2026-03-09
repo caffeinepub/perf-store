@@ -3,12 +3,14 @@
   "name": "Perf Store by LEMA",
   "short_name": "Perf",
   "description": "Shop premium perfumes online. Browse, buy, and track orders from the Perf Store. A LEMA company product.",
+  "lang": "en",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["tabbed", "window-controls-overlay", "standalone", "minimal-ui", "browser"],
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "orientation": "portrait",
-  "scope": "/",
   "icons": [
     {
       "src": "/assets/generated/pwa-icon.dim_512x512.png",
@@ -23,15 +25,170 @@
       "purpose": "any"
     }
   ],
-  "categories": ["shopping", "lifestyle"],
+  "categories": ["shopping", "lifestyle", "notes"],
   "screenshots": [],
-  "related_applications": [],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.lema.perfstore",
+      "id": "com.lema.perfstore"
+    },
+    {
+      "platform": "webapp",
+      "url": "https://perf-store-cdt.caffeine.xyz/manifest.json"
+    }
+  ],
   "prefer_related_applications": false,
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "age_range": {
+    "minimum_age": 13,
+    "description": "Suitable for ages 13 and above. This is a shopping app for perfumes and lifestyle products. Parental guidance is advised for users under 18 making purchases."
+  },
+  "display_override_notes": "Prefers tabbed for multi-tab PWA, then window-controls-overlay for desktop, falls back to standalone, minimal-ui, then browser.",
+  "scope_extensions": [
+    { "origin": "https://shop.lema.app" },
+    { "origin": "https://partners.lema.app" },
+    { "origin": "https://perf-store-cdt.caffeine.xyz" }
+  ],
+  "protocol_handlers": [
+    { "protocol": "mailto", "url": "/?mailto=%s" },
+    { "protocol": "sms", "url": "/?sms=%s" },
+    { "protocol": "web+perfstore", "url": "/?perfstore=%s" }
+  ],
+  "share_target": {
+    "action": "/?share-target=true",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "media", "accept": ["image/*"] }]
+    }
+  },
+  "widgets": [
+    {
+      "name": "Perf Quick Shop",
+      "description": "Browse top perfumes and add to cart from your home screen widget.",
+      "tag": "perf-quick-shop",
+      "ms_ac_template": "widgets/perf-quick-shop.json",
+      "data": "/widgets/perf-quick-shop-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "label": "Perf Quick Shop widget"
+        }
+      ],
+      "icons": [
+        { "src": "/assets/generated/pwa-icon-192.dim_192x192.png", "sizes": "192x192" }
+      ],
+      "auth": false,
+      "update": 3600
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "note_taking": {
+    "new_note_url": "/?new-note=true"
+  },
+  "shortcuts": [
+    {
+      "name": "Home",
+      "short_name": "Home",
+      "description": "Go to the main shop (Alt+H)",
+      "url": "/?tab=home",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "short_name": "Cart",
+      "description": "View your shopping cart (Alt+C)",
+      "url": "/?tab=cart",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "short_name": "Orders",
+      "description": "View your order history (Alt+O)",
+      "url": "/?tab=orders",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Partners",
+      "short_name": "Partners",
+      "description": "Partner dashboard and product management (Alt+P)",
+      "url": "/?tab=partner",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Stores",
+      "short_name": "Stores",
+      "description": "Browse partner stores (Alt+S)",
+      "url": "/?tab=stores",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "navigate-existing", "navigate-new"]
+  },
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/png": [".png"]
+      },
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    }
+  ],
+  "storage": {
+    "estimate": true
+  },
   "company": "LEMA",
-  "build_date": "2026-03-08",
+  "build_date": "2026-03-09",
   "build_year": "2026",
-  "build_time": "20:33:41 UTC",
-  "build_timestamp": "2026-03-08T20:33:41.734Z",
+  "build_time": "00:00:00 UTC",
+  "build_timestamp": "2026-03-09T00:00:00.000Z",
   "service_provider": {
     "name": "Adrian Were",
     "phone": "0706130805"

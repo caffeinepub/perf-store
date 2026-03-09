@@ -10,6 +10,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { PostPurchasePrompt } from "../components/PostPurchasePrompt";
 import { useActor } from "../hooks/useActor";
 import {
   useCart,
@@ -33,6 +34,8 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const [sessionProcessed, setSessionProcessed] = useState(false);
   const [isProcessingReturn, setIsProcessingReturn] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [purchasedNames, setPurchasedNames] = useState<string[]>([]);
+  const [showPostPurchase, setShowPostPurchase] = useState(false);
 
   const isLoading = cartLoading || perfumesLoading;
 
@@ -47,16 +50,25 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       try {
         const status = await actor.getStripeSessionStatus(stripeSessionId);
         if (status.__kind__ === "completed") {
+          // Capture product names before placing order (enrichedCart may clear)
+          const names =
+            cartItems && perfumes
+              ? cartItems
+                  .map(
+                    (item) =>
+                      perfumes.find((p) => p.id === item.perfumeId)?.name,
+                  )
+                  .filter((n): n is string => Boolean(n))
+              : [];
           await placeOrder.mutateAsync(stripeSessionId);
+          setPurchasedNames(names);
           setOrderSuccess(true);
+          setShowPostPurchase(true);
           toast.success("Payment successful! Your order has been placed.");
           // Clean URL
           const url = new URL(window.location.href);
           url.searchParams.delete("session_id");
           window.history.replaceState({}, "", url.toString());
-          setTimeout(() => {
-            onOrderPlaced();
-          }, 2000);
         } else if (status.__kind__ === "failed") {
           toast.error(`Payment failed: ${status.failed.error}`);
         }
@@ -145,7 +157,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
     );
   }
 
-  // Show success state
+  // Show success state with post-purchase prompt overlay
   if (orderSuccess) {
     return (
       <div
@@ -164,9 +176,20 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
             Order Confirmed
           </h2>
           <p className="font-body text-sm text-muted-foreground">
-            Redirecting to your orders…
+            Your purchase was successful!
           </p>
         </motion.div>
+
+        {/* Post-purchase prompt overlay */}
+        {showPostPurchase && (
+          <PostPurchasePrompt
+            productNames={purchasedNames}
+            onDismiss={() => {
+              setShowPostPurchase(false);
+              onOrderPlaced();
+            }}
+          />
+        )}
       </div>
     );
   }

@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Phone, ShoppingBag, Star } from "lucide-react";
+import { Phone, Search, ShoppingBag, Star, X } from "lucide-react";
 import { motion } from "motion/react";
+import { useMemo, useState } from "react";
 import type { Perfume } from "../backend.d";
 import { useAverageRating, usePerfumes } from "../hooks/useQueries";
 
@@ -101,6 +103,16 @@ function ProductCard({ perfume, index, onView }: ProductCardProps) {
 
 export function HomePage({ onViewProduct }: HomePageProps) {
   const { data: perfumes, isLoading, isError } = usePerfumes();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPerfumes = useMemo(() => {
+    if (!perfumes) return [];
+    if (!searchQuery.trim()) return perfumes;
+    const q = searchQuery.toLowerCase();
+    return perfumes.filter((p) => p.name.toLowerCase().includes(q));
+  }, [perfumes, searchQuery]);
+
+  const isSearchActive = searchQuery.trim().length > 0;
 
   return (
     <div className="min-h-full bg-background" data-ocid="home.page">
@@ -116,6 +128,34 @@ export function HomePage({ onViewProduct }: HomePageProps) {
           <p className="text-muted-foreground text-xs font-body mt-0.5 tracking-widest uppercase">
             Luxury Fragrances
           </p>
+        </div>
+        {/* Search bar */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search fragrances…"
+              className="pl-9 pr-9 bg-secondary border-border focus:border-gold/60 font-body text-sm h-9"
+              data-ocid="home.search_input"
+            />
+            {isSearchActive && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {isSearchActive && !isLoading && perfumes && (
+            <p className="text-[10px] font-body text-muted-foreground mt-1.5">
+              {filteredPerfumes.length} of {perfumes.length} results
+            </p>
+          )}
         </div>
       </header>
 
@@ -149,9 +189,21 @@ export function HomePage({ onViewProduct }: HomePageProps) {
           </div>
         )}
 
-        {!isLoading && !isError && perfumes && perfumes.length > 0 && (
+        {!isLoading &&
+          !isError &&
+          isSearchActive &&
+          filteredPerfumes.length === 0 && (
+            <div className="text-center py-16" data-ocid="home.empty_state">
+              <Search className="text-muted-foreground/40 w-12 h-12 mx-auto mb-3" />
+              <p className="font-body text-muted-foreground">
+                No fragrances found for "{searchQuery}"
+              </p>
+            </div>
+          )}
+
+        {!isLoading && !isError && filteredPerfumes.length > 0 && (
           <div className="grid grid-cols-2 gap-3" data-ocid="home.list">
-            {perfumes.map((perfume, i) => (
+            {filteredPerfumes.map((perfume, i) => (
               <ProductCard
                 key={String(perfume.id)}
                 perfume={perfume}
