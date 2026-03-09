@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Phone, Search, ShoppingBag, Star, X } from "lucide-react";
+import {
+  Phone,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Users,
+  X,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import type { Perfume } from "../backend.d";
@@ -9,6 +17,7 @@ import { useAverageRating, usePerfumes } from "../hooks/useQueries";
 
 interface HomePageProps {
   onViewProduct: (perfume: Perfume) => void;
+  onNavigateToPartner?: () => void;
 }
 
 function ProductCardSkeleton() {
@@ -101,7 +110,74 @@ function ProductCard({ perfume, index, onView }: ProductCardProps) {
   );
 }
 
-export function HomePage({ onViewProduct }: HomePageProps) {
+// Welcoming empty state for a brand-new store
+function WelcomeEmptyState({
+  onNavigateToPartner,
+}: { onNavigateToPartner?: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, ease: "easeOut" }}
+      className="flex flex-col items-center text-center px-6 py-14"
+      data-ocid="home.empty_state"
+    >
+      {/* Glowing icon cluster */}
+      <div className="relative mb-7">
+        {/* Outer glow ring */}
+        <div className="absolute inset-0 rounded-full bg-gold/10 blur-2xl scale-150 pointer-events-none" />
+        <div className="relative w-20 h-20 rounded-full bg-card border border-gold/30 flex items-center justify-center shadow-[0_0_32px_rgba(212,175,55,0.18)]">
+          <Sparkles className="w-9 h-9 text-gold" />
+        </div>
+        {/* Small badge */}
+        <span className="absolute -bottom-2 -right-2 flex items-center justify-center w-7 h-7 rounded-full bg-gold text-background shadow-lg">
+          <ShoppingBag className="w-3.5 h-3.5" />
+        </span>
+      </div>
+
+      {/* Headline */}
+      <h2 className="font-display text-2xl font-bold text-foreground mb-2 leading-tight">
+        Welcome to <span className="text-gold">Perf Store</span>
+      </h2>
+
+      {/* Divider line */}
+      <div className="w-12 h-px bg-gold/40 mb-4" />
+
+      {/* Description */}
+      <p className="font-body text-sm text-muted-foreground leading-relaxed max-w-xs mb-2">
+        The shelves are fresh and ready. No products are listed yet — this is
+        your chance to be among the very first sellers.
+      </p>
+      <p className="font-body text-sm text-muted-foreground/70 leading-relaxed max-w-xs mb-8">
+        If you have a business or are a partner, head over to the{" "}
+        <span className="text-gold font-medium">Partners</span> tab to list your
+        first product and start selling today.
+      </p>
+
+      {/* CTA */}
+      {onNavigateToPartner && (
+        <Button
+          onClick={onNavigateToPartner}
+          className="flex items-center gap-2 bg-gold hover:bg-gold/90 text-background font-body font-semibold text-sm px-6 py-2.5 rounded-full shadow-[0_4px_20px_rgba(212,175,55,0.28)] transition-all duration-200 hover:shadow-[0_4px_28px_rgba(212,175,55,0.42)] active:scale-95"
+          data-ocid="home.partner.primary_button"
+        >
+          <Users className="w-4 h-4" />
+          List Your First Product
+        </Button>
+      )}
+
+      {/* Subtle footnote */}
+      <p className="mt-5 font-body text-[11px] text-muted-foreground/50 tracking-wide uppercase">
+        Powered by LEMA · Perf Store
+      </p>
+    </motion.div>
+  );
+}
+
+export function HomePage({
+  onViewProduct,
+  onNavigateToPartner,
+}: HomePageProps) {
   const { data: perfumes, isLoading, isError } = usePerfumes();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -180,19 +256,18 @@ export function HomePage({ onViewProduct }: HomePageProps) {
           </div>
         )}
 
+        {/* Brand-new store welcome state — shown when no products exist at all */}
         {!isLoading && !isError && perfumes && perfumes.length === 0 && (
-          <div className="text-center py-20" data-ocid="home.empty_state">
-            <ShoppingBag className="text-muted-foreground w-12 h-12 mx-auto mb-4" />
-            <p className="font-body text-muted-foreground">
-              No fragrances available
-            </p>
-          </div>
+          <WelcomeEmptyState onNavigateToPartner={onNavigateToPartner} />
         )}
 
+        {/* Search returned no matches */}
         {!isLoading &&
           !isError &&
           isSearchActive &&
-          filteredPerfumes.length === 0 && (
+          filteredPerfumes.length === 0 &&
+          perfumes &&
+          perfumes.length > 0 && (
             <div className="text-center py-16" data-ocid="home.empty_state">
               <Search className="text-muted-foreground/40 w-12 h-12 mx-auto mb-3" />
               <p className="font-body text-muted-foreground">

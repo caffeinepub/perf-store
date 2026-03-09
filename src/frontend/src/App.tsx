@@ -425,7 +425,10 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <HomePage onViewProduct={setSelectedPerfume} />
+                <HomePage
+                  onViewProduct={setSelectedPerfume}
+                  onNavigateToPartner={() => setActiveTab("partner")}
+                />
               </motion.div>
             )}
             {activeTab === "cart" && (
