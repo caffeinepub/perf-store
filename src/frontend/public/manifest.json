@@ -39,11 +39,18 @@
   ],
   "screenshots": [
     {
-      "src": "/assets/generated/app-screenshot-home.dim_390x844.png",
+      "src": "/assets/generated/app-screenshot-narrow.dim_390x844.png",
       "sizes": "390x844",
       "type": "image/png",
-      "platform": "narrow",
-      "label": "Perf Store home screen showing premium perfumes in a product grid"
+      "form_factor": "narrow",
+      "label": "Perf Store home screen on mobile — browse premium perfumes in a product grid"
+    },
+    {
+      "src": "/assets/generated/app-screenshot-wide.dim_1280x800.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Perf Store on desktop — side navigation panel with a 3-column product grid"
     }
   ],
   "shortcuts": [
@@ -54,8 +61,8 @@
       "url": "/?tab=home",
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
-          "sizes": "192x192",
+          "src": "/assets/generated/shortcut-home.dim_96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -67,8 +74,8 @@
       "url": "/?tab=stores",
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
-          "sizes": "192x192",
+          "src": "/assets/generated/shortcut-stores.dim_96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -80,8 +87,8 @@
       "url": "/?tab=cart",
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
-          "sizes": "192x192",
+          "src": "/assets/generated/shortcut-cart.dim_96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -93,8 +100,8 @@
       "url": "/?tab=orders",
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
-          "sizes": "192x192",
+          "src": "/assets/generated/shortcut-orders.dim_96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -106,8 +113,8 @@
       "url": "/?tab=partner",
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
-          "sizes": "192x192",
+          "src": "/assets/generated/shortcut-partners.dim_96x96.png",
+          "sizes": "96x96",
           "type": "image/png"
         }
       ]
@@ -130,7 +137,6 @@
     "minimum_age": 13,
     "description": "Suitable for ages 13 and above. This is a shopping app for perfumes and lifestyle products. Parental guidance is advised for users under 18 making purchases."
   },
-  "display_override_notes": "Prefers tabbed for multi-tab PWA, then window-controls-overlay for desktop, falls back to standalone, minimal-ui, then browser.",
   "scope_extensions": [
     {
       "origin": "https://lema.app"
@@ -246,8 +252,8 @@
   "company": "LEMA",
   "build_date": "2026-03-09",
   "build_year": "2026",
-  "build_time": "12:56:37 UTC",
-  "build_timestamp": "2026-03-09T12:56:37.563Z",
+  "build_time": "13:09:52 UTC",
+  "build_timestamp": "2026-03-09T13:09:52.621Z",
   "service_provider": {
     "name": "Adrian Were",
     "phone": "0706130805"
