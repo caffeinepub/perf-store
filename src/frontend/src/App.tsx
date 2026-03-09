@@ -1,4 +1,12 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -8,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  ArrowRight,
   Home,
   Loader2,
   LogOut,
@@ -15,6 +24,7 @@ import {
   Phone,
   Receipt,
   ShoppingCart,
+  Sparkles,
   Store,
   Users,
   X,
@@ -52,6 +62,8 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string>(
     () => localStorage.getItem(EMAIL_KEY) ?? "",
   );
+
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
 
   const [authView, setAuthView] = useState<AuthView>("login");
   const [activeTab, setActiveTab] = useState<MainTab>(() => {
@@ -118,6 +130,19 @@ export default function App() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const FIRST_LOGIN_KEY = "perf_first_login_shown";
+
+  const handleCloseWelcomeModal = () => {
+    localStorage.setItem(FIRST_LOGIN_KEY, "1");
+    setShowWelcomeModal(false);
+  };
+
+  const handleWelcomeNavigateToPartner = () => {
+    localStorage.setItem(FIRST_LOGIN_KEY, "1");
+    setShowWelcomeModal(false);
+    setActiveTab("partner");
+  };
+
   // Called by LoginPage on successful login
   const handleLoginSuccess = (email: string, token: string) => {
     localStorage.setItem(TOKEN_KEY, token);
@@ -125,6 +150,9 @@ export default function App() {
     setSessionToken(token);
     setUserEmail(email);
     setIsAuthenticated(true);
+    if (!localStorage.getItem(FIRST_LOGIN_KEY)) {
+      setShowWelcomeModal(true);
+    }
   };
 
   // Sign out
@@ -539,6 +567,71 @@ export default function App() {
           </a>
         </p>
       </footer>
+
+      {/* First-login welcome modal */}
+      <Dialog
+        open={showWelcomeModal}
+        onOpenChange={(open) => {
+          if (!open) handleCloseWelcomeModal();
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md bg-card border border-gold/30 shadow-2xl shadow-gold/10 p-0 overflow-hidden"
+          data-ocid="welcome.modal"
+        >
+          {/* Gold glow strip at top */}
+          <div className="h-1 w-full bg-gradient-to-r from-transparent via-gold to-transparent" />
+
+          <div className="px-6 pt-6 pb-7 space-y-5">
+            {/* Icon + heading */}
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-gold" />
+              </div>
+              <DialogHeader className="gap-2">
+                <DialogTitle className="font-display text-2xl font-bold text-foreground tracking-tight">
+                  Welcome to Perf Store
+                </DialogTitle>
+                <DialogDescription className="font-body text-sm text-muted-foreground leading-relaxed">
+                  Discover luxury fragrances and premium goods, all in one
+                  place. Start shopping or list your own products as a partner.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            {/* Community note */}
+            <div className="flex items-center gap-3 rounded-lg bg-gold/5 border border-gold/20 px-4 py-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />
+              <p className="font-body text-xs text-gold/90 leading-relaxed">
+                You're now part of the{" "}
+                <span className="font-semibold text-gold">LEMA Perf</span>{" "}
+                community.
+              </p>
+            </div>
+
+            {/* CTA buttons */}
+            <div className="flex flex-col gap-2.5">
+              <Button
+                onClick={handleCloseWelcomeModal}
+                className="w-full bg-gold text-primary-foreground hover:bg-gold-deep font-body text-sm tracking-wide font-medium transition-all duration-200"
+                data-ocid="welcome.primary_button"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Start Shopping
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleWelcomeNavigateToPartner}
+                className="w-full text-muted-foreground hover:text-gold hover:bg-gold/5 font-body text-sm transition-all duration-200"
+                data-ocid="welcome.secondary_button"
+              >
+                Become a Partner
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </>

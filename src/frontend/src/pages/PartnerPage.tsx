@@ -26,6 +26,7 @@ import {
   Phone,
   RefreshCw,
   Shield,
+  Sparkles,
   TrendingUp,
   Upload,
   UserCog,
@@ -34,7 +35,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -130,6 +131,7 @@ export function PartnerPage() {
   const { clear } = useInternetIdentity();
 
   const [copied, setCopied] = useState(false);
+  const [showPartnerWelcome, setShowPartnerWelcome] = useState(true);
 
   // Payout account form
   const [connectAccountId, setConnectAccountId] = useState("");
@@ -324,6 +326,80 @@ export function PartnerPage() {
       </header>
 
       <main className="px-4 py-6 space-y-4 pb-24">
+        {/* Partner welcome banner — shown only when no products submitted yet */}
+        <AnimatePresence>
+          {showPartnerWelcome &&
+            !productsLoading &&
+            (!partnerProducts || partnerProducts.length === 0) && (
+              <motion.div
+                key="partner-welcome"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12, scale: 0.97 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="relative rounded-xl border border-gold/30 bg-gradient-to-br from-gold/10 via-gold/5 to-transparent overflow-hidden"
+                data-ocid="partner.welcome.card"
+              >
+                {/* Subtle top glow */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+
+                <div className="px-5 py-5 pr-12">
+                  {/* Heading */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
+                    <h2 className="font-display text-lg font-bold text-gold tracking-tight">
+                      Welcome, Partner!
+                    </h2>
+                  </div>
+
+                  {/* Body */}
+                  <p className="font-body text-sm text-foreground/80 leading-relaxed mb-3">
+                    You're joining a growing community of sellers on{" "}
+                    <span className="text-gold font-semibold">
+                      LEMA Perf Store
+                    </span>
+                    . List your first product below and start earning your share
+                    of every sale.{" "}
+                    <span className="text-gold font-semibold">
+                      The first three partners to sell enjoy a 90% cashback on
+                      their first sale
+                    </span>{" "}
+                    — that means you keep almost everything!
+                  </p>
+
+                  {/* Info line */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Phone className="w-3.5 h-3.5 text-gold/70 flex-shrink-0" />
+                    <p className="font-body text-xs text-muted-foreground">
+                      Need help getting started? Call{" "}
+                      <span className="text-foreground font-medium">
+                        Adrian Were
+                      </span>{" "}
+                      on{" "}
+                      <a
+                        href="tel:0706130805"
+                        className="text-gold hover:text-gold/80 transition-colors font-mono"
+                      >
+                        0706130805
+                      </a>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dismiss button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPartnerWelcome(false)}
+                  aria-label="Dismiss welcome banner"
+                  className="absolute top-3 right-3 w-7 h-7 rounded-full bg-secondary/60 hover:bg-secondary border border-border/60 hover:border-gold/30 flex items-center justify-center text-muted-foreground hover:text-gold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                  data-ocid="partner.welcome.close_button"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            )}
+        </AnimatePresence>
+
         {isLoading ? (
           <div className="space-y-4" data-ocid="partner.loading_state">
             {["p1", "p2", "p3"].map((key) => (
