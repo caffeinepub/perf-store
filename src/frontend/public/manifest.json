@@ -4,10 +4,17 @@
   "short_name": "Perf",
   "description": "Shop premium perfumes online. Browse, buy, and track orders from the Perf Store. A LEMA company product.",
   "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["tabbed", "window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "display_override": [
+    "tabbed",
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "orientation": "portrait",
@@ -25,7 +32,11 @@
       "purpose": "any"
     }
   ],
-  "categories": ["shopping", "lifestyle", "notes"],
+  "categories": [
+    "shopping",
+    "lifestyle",
+    "notes"
+  ],
   "screenshots": [],
   "related_applications": [
     {
@@ -46,14 +57,29 @@
   },
   "display_override_notes": "Prefers tabbed for multi-tab PWA, then window-controls-overlay for desktop, falls back to standalone, minimal-ui, then browser.",
   "scope_extensions": [
-    { "origin": "https://shop.lema.app" },
-    { "origin": "https://partners.lema.app" },
-    { "origin": "https://perf-store-cdt.caffeine.xyz" }
+    {
+      "origin": "https://shop.lema.app"
+    },
+    {
+      "origin": "https://partners.lema.app"
+    },
+    {
+      "origin": "https://perf-store-cdt.caffeine.xyz"
+    }
   ],
   "protocol_handlers": [
-    { "protocol": "mailto", "url": "/?mailto=%s" },
-    { "protocol": "sms", "url": "/?sms=%s" },
-    { "protocol": "web+perfstore", "url": "/?perfstore=%s" }
+    {
+      "protocol": "mailto",
+      "url": "/?mailto=%s"
+    },
+    {
+      "protocol": "sms",
+      "url": "/?sms=%s"
+    },
+    {
+      "protocol": "web+perfstore",
+      "url": "/?perfstore=%s"
+    }
   ],
   "share_target": {
     "action": "/?share-target=true",
@@ -63,7 +89,14 @@
       "title": "title",
       "text": "text",
       "url": "url",
-      "files": [{ "name": "media", "accept": ["image/*"] }]
+      "files": [
+        {
+          "name": "media",
+          "accept": [
+            "image/*"
+          ]
+        }
+      ]
     }
   },
   "widgets": [
@@ -82,7 +115,10 @@
         }
       ],
       "icons": [
-        { "src": "/assets/generated/pwa-icon-192.dim_192x192.png", "sizes": "192x192" }
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192"
+        }
       ],
       "auth": false,
       "update": 3600
@@ -162,14 +198,23 @@
     }
   ],
   "launch_handler": {
-    "client_mode": ["focus-existing", "navigate-existing", "navigate-new"]
+    "client_mode": [
+      "focus-existing",
+      "navigate-existing",
+      "navigate-new"
+    ]
   },
   "file_handlers": [
     {
       "action": "/",
       "accept": {
-        "image/jpeg": [".jpg", ".jpeg"],
-        "image/png": [".png"]
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/png": [
+          ".png"
+        ]
       },
       "icons": [
         {
