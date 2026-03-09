@@ -37,7 +37,82 @@
     "lifestyle",
     "notes"
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/assets/generated/app-screenshot-home.dim_390x844.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Perf Store home screen showing premium perfumes in a product grid"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shop Perfumes",
+      "short_name": "Home",
+      "description": "Browse the latest perfumes and luxury goods",
+      "url": "/?tab=home",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Browse Stores",
+      "short_name": "Stores",
+      "description": "Find partner stores near you",
+      "url": "/?tab=stores",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "My Cart",
+      "short_name": "Cart",
+      "description": "View items in your shopping cart",
+      "url": "/?tab=cart",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "My Orders",
+      "short_name": "Orders",
+      "description": "Track your orders and refund requests",
+      "url": "/?tab=orders",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Partner Dashboard",
+      "short_name": "Partners",
+      "description": "Manage your store and product listings",
+      "url": "/?tab=partner",
+      "icons": [
+        {
+          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "related_applications": [
     {
       "platform": "play",
@@ -58,10 +133,16 @@
   "display_override_notes": "Prefers tabbed for multi-tab PWA, then window-controls-overlay for desktop, falls back to standalone, minimal-ui, then browser.",
   "scope_extensions": [
     {
+      "origin": "https://lema.app"
+    },
+    {
       "origin": "https://shop.lema.app"
     },
     {
       "origin": "https://partners.lema.app"
+    },
+    {
+      "origin": "https://orders.lema.app"
     },
     {
       "origin": "https://perf-store-cdt.caffeine.xyz"
@@ -165,8 +246,8 @@
   "company": "LEMA",
   "build_date": "2026-03-09",
   "build_year": "2026",
-  "build_time": "00:00:00 UTC",
-  "build_timestamp": "2026-03-09T00:00:00.000Z",
+  "build_time": "12:56:37 UTC",
+  "build_timestamp": "2026-03-09T12:56:37.563Z",
   "service_provider": {
     "name": "Adrian Were",
     "phone": "0706130805"
