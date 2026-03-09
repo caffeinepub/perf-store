@@ -136,6 +136,13 @@ export function PartnerPage() {
   // Payout account form
   const [connectAccountId, setConnectAccountId] = useState("");
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [payoutMethodType, setPayoutMethodType] = useState<
+    "stripe" | "mobile_money"
+  >("stripe");
+  const [mobileMoneyNumber, setMobileMoneyNumber] = useState("");
+  const [mobileMoneyProvider, setMobileMoneyProvider] = useState<
+    "mpesa" | "airtel" | "tkash"
+  >("mpesa");
 
   // Admin reset password form
   const [resetTargetEmail, setResetTargetEmail] = useState<string | null>(null);
@@ -185,22 +192,43 @@ export function PartnerPage() {
 
   const handleSavePayoutAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = connectAccountId.trim();
-    if (!trimmed) {
-      toast.error("Please enter a valid Stripe Connect Account ID");
-      return;
-    }
-    if (!trimmed.startsWith("acct_")) {
-      toast.error('Account ID must start with "acct_"');
-      return;
-    }
-    try {
-      await savePayoutAccount.mutateAsync(trimmed);
-      toast.success("Payout account connected successfully!");
-      setConnectAccountId("");
-      setIsEditingAccount(false);
-    } catch {
-      toast.error("Failed to save payout account. Please try again.");
+    if (payoutMethodType === "mobile_money") {
+      const num = mobileMoneyNumber.trim().replace(/\s/g, "");
+      const kenyanPhone = /^(07|01|\+2547|\+2541)\d{8,9}$/.test(num);
+      if (!kenyanPhone) {
+        toast.error(
+          "Please enter a valid Kenyan phone number (e.g. 0712345678)",
+        );
+        return;
+      }
+      const normalized = num.startsWith("+254") ? `0${num.slice(4)}` : num;
+      const prefixed = `${mobileMoneyProvider}:${normalized}`;
+      try {
+        await savePayoutAccount.mutateAsync(prefixed);
+        toast.success("Mobile money payout method saved!");
+        setMobileMoneyNumber("");
+        setIsEditingAccount(false);
+      } catch {
+        toast.error("Failed to save payout method. Please try again.");
+      }
+    } else {
+      const trimmed = connectAccountId.trim();
+      if (!trimmed) {
+        toast.error("Please enter a valid Stripe Connect Account ID");
+        return;
+      }
+      if (!trimmed.startsWith("acct_")) {
+        toast.error('Account ID must start with "acct_"');
+        return;
+      }
+      try {
+        await savePayoutAccount.mutateAsync(trimmed);
+        toast.success("Payout account connected successfully!");
+        setConnectAccountId("");
+        setIsEditingAccount(false);
+      } catch {
+        toast.error("Failed to save payout account. Please try again.");
+      }
     }
   };
 
@@ -297,6 +325,24 @@ export function PartnerPage() {
   ];
 
   const isPayoutConnected = !!payoutAccount && !isEditingAccount;
+
+  // Detect payout method type when account loads
+  if (payoutAccount && !isEditingAccount) {
+    const isMobileMoney =
+      payoutAccount.startsWith("mpesa:") ||
+      payoutAccount.startsWith("airtel:") ||
+      payoutAccount.startsWith("tkash:");
+    if (isMobileMoney && payoutMethodType === "stripe") {
+      const provider = payoutAccount.split(":")[0] as
+        | "mpesa"
+        | "airtel"
+        | "tkash";
+      setPayoutMethodType("mobile_money");
+      setMobileMoneyProvider(provider);
+    } else if (!isMobileMoney && payoutMethodType === "mobile_money") {
+      setPayoutMethodType("stripe");
+    }
+  }
 
   return (
     <div className="min-h-full bg-background" data-ocid="partner.page">
@@ -488,70 +534,179 @@ export function PartnerPage() {
                     </div>
                   ) : isPayoutConnected && payoutAccount ? (
                     /* Connected state */
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/20">
-                        <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-body text-xs text-emerald-400 font-semibold tracking-wide uppercase mb-0.5">
-                            Connected
-                          </p>
-                          <p className="font-body text-sm text-foreground font-medium truncate">
-                            {maskAccountId(payoutAccount)}
+                    (() => {
+                      const isMobileMoney =
+                        payoutAccount.startsWith("mpesa:") ||
+                        payoutAccount.startsWith("airtel:") ||
+                        payoutAccount.startsWith("tkash:");
+                      const providerLabels: Record<string, string> = {
+                        mpesa: "M-Pesa",
+                        airtel: "Airtel Money",
+                        tkash: "T-Kash",
+                      };
+                      let displayValue = maskAccountId(payoutAccount);
+                      let methodLabel = "Stripe Connect";
+                      let methodIcon = (
+                        <Shield className="w-4 h-4 text-emerald-400" />
+                      );
+                      if (isMobileMoney) {
+                        const [prov, num] = payoutAccount.split(":");
+                        const masked = num ? `***${num.slice(-6)}` : "***";
+                        displayValue = `${providerLabels[prov] || prov} · ${masked}`;
+                        methodLabel = "Mobile Money";
+                        methodIcon = (
+                          <Phone className="w-4 h-4 text-emerald-400" />
+                        );
+                      }
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/20">
+                            {methodIcon}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-body text-xs text-emerald-400 font-semibold tracking-wide uppercase mb-0.5">
+                                {methodLabel}
+                              </p>
+                              <p className="font-body text-sm text-foreground font-medium truncate">
+                                {displayValue}
+                              </p>
+                            </div>
+                            <Badge className="bg-emerald-950/50 text-emerald-400 border-emerald-500/30 font-body text-[10px] flex-shrink-0">
+                              Active
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIsEditingAccount(true);
+                              if (isMobileMoney) {
+                                setPayoutMethodType("mobile_money");
+                                const [prov, num] = payoutAccount.split(":");
+                                setMobileMoneyProvider(
+                                  (prov as "mpesa" | "airtel" | "tkash") ||
+                                    "mpesa",
+                                );
+                                setMobileMoneyNumber(num || "");
+                              } else {
+                                setPayoutMethodType("stripe");
+                                setConnectAccountId(payoutAccount);
+                              }
+                            }}
+                            className="border-border text-muted-foreground hover:text-foreground font-body text-xs"
+                            data-ocid="partner.edit_button"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                            Change Account
+                          </Button>
+                          <p className="font-body text-[11px] text-muted-foreground/60 leading-relaxed">
+                            Your share ({partnerShareNum}%) is transferred
+                            within 2 business days of each sale.
                           </p>
                         </div>
-                        <Badge className="bg-emerald-950/50 text-emerald-400 border-emerald-500/30 font-body text-[10px] flex-shrink-0">
-                          Active
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setIsEditingAccount(true);
-                          setConnectAccountId(payoutAccount);
-                        }}
-                        className="border-border text-muted-foreground hover:text-foreground font-body text-xs"
-                        data-ocid="partner.edit_button"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-                        Change Account
-                      </Button>
-                      <p className="font-body text-[11px] text-muted-foreground/60 leading-relaxed">
-                        Your share ({partnerShareNum}%) is transferred within 2
-                        business days of each sale.
-                      </p>
-                    </div>
+                      );
+                    })()
                   ) : (
                     /* Connect form */
                     <form
                       onSubmit={handleSavePayoutAccount}
                       className="space-y-4"
                     >
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="connect-account-id"
-                          className="font-body text-xs text-muted-foreground tracking-widest uppercase"
+                      {/* Payout method selector */}
+                      <div className="flex gap-2 p-1 bg-secondary/50 rounded-lg border border-border/50">
+                        <button
+                          type="button"
+                          onClick={() => setPayoutMethodType("stripe")}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "stripe" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          data-ocid="partner.tab"
                         >
-                          Stripe Connect Account ID
-                        </Label>
-                        <Input
-                          id="connect-account-id"
-                          placeholder="acct_1234567890"
-                          value={connectAccountId}
-                          onChange={(e) => setConnectAccountId(e.target.value)}
-                          className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
-                          data-ocid="partner.input"
-                        />
+                          <Shield className="w-3.5 h-3.5" />
+                          Stripe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPayoutMethodType("mobile_money")}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "mobile_money" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          data-ocid="partner.tab"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          Mobile Money
+                        </button>
                       </div>
+
+                      {payoutMethodType === "stripe" ? (
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="connect-account-id"
+                            className="font-body text-xs text-muted-foreground tracking-widest uppercase"
+                          >
+                            Stripe Connect Account ID
+                          </Label>
+                          <Input
+                            id="connect-account-id"
+                            placeholder="acct_1234567890"
+                            value={connectAccountId}
+                            onChange={(e) =>
+                              setConnectAccountId(e.target.value)
+                            }
+                            className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                            data-ocid="partner.input"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="space-y-1.5">
+                            <Label className="font-body text-xs text-muted-foreground tracking-widest uppercase">
+                              Provider
+                            </Label>
+                            <div className="flex gap-2">
+                              {(["mpesa", "airtel", "tkash"] as const).map(
+                                (p) => (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    onClick={() => setMobileMoneyProvider(p)}
+                                    className={`flex-1 py-2 rounded-md text-xs font-body font-medium border transition-all ${mobileMoneyProvider === p ? "bg-gold/10 text-gold border-gold/40" : "bg-secondary border-border text-muted-foreground hover:text-foreground"}`}
+                                    data-ocid="partner.toggle"
+                                  >
+                                    {p === "mpesa"
+                                      ? "M-Pesa"
+                                      : p === "airtel"
+                                        ? "Airtel"
+                                        : "T-Kash"}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="mobile-money-number"
+                              className="font-body text-xs text-muted-foreground tracking-widest uppercase"
+                            >
+                              Phone Number
+                            </Label>
+                            <Input
+                              id="mobile-money-number"
+                              type="tel"
+                              placeholder="0712 345 678"
+                              value={mobileMoneyNumber}
+                              onChange={(e) =>
+                                setMobileMoneyNumber(e.target.value)
+                              }
+                              className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                              data-ocid="partner.input"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <p className="font-body text-[11px] text-muted-foreground/70 leading-relaxed bg-secondary/40 rounded-md p-3 border border-border/50">
                         <span className="text-gold font-medium">
                           How it works:{" "}
                         </span>
-                        Connect your Stripe account to receive automatic payouts
-                        when your products sell. Your share ({partnerShareNum}%)
-                        is transferred within 2 business days of each sale. The
-                        platform retains {commissionRateNum}% as a service fee.
+                        {payoutMethodType === "stripe"
+                          ? `Connect your Stripe account to receive automatic payouts when your products sell. Your share (${partnerShareNum}%) is transferred within 2 business days of each sale. The platform retains ${commissionRateNum}% as a service fee.`
+                          : `Receive payouts directly to your mobile money account. Your share (${partnerShareNum}%) is sent within 2 business days of each sale.`}
                       </p>
 
                       <div className="flex gap-2">
@@ -568,8 +723,14 @@ export function PartnerPage() {
                             </>
                           ) : (
                             <>
-                              <Shield className="w-4 h-4 mr-2" />
-                              Connect Account
+                              {payoutMethodType === "stripe" ? (
+                                <Shield className="w-4 h-4 mr-2" />
+                              ) : (
+                                <Phone className="w-4 h-4 mr-2" />
+                              )}
+                              {payoutMethodType === "stripe"
+                                ? "Connect Account"
+                                : "Save Mobile Money"}
                             </>
                           )}
                         </Button>
@@ -580,6 +741,7 @@ export function PartnerPage() {
                             onClick={() => {
                               setIsEditingAccount(false);
                               setConnectAccountId("");
+                              setMobileMoneyNumber("");
                             }}
                             className="border-border text-muted-foreground hover:text-foreground font-body text-sm"
                             data-ocid="partner.cancel_button"

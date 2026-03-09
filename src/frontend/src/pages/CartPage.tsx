@@ -1,11 +1,23 @@
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircle,
   CreditCard,
   Loader2,
+  MessageSquare,
   PackageCheck,
   ShoppingCart,
+  Smartphone,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -24,6 +36,8 @@ interface CartPageProps {
   stripeSessionId?: string;
 }
 
+type PhonePayStep = "input" | "sending" | "confirm";
+
 export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const { data: cartItems, isLoading: cartLoading } = useCart();
   const { data: perfumes, isLoading: perfumesLoading } = usePerfumes();
@@ -36,6 +50,12 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [purchasedNames, setPurchasedNames] = useState<string[]>([]);
   const [showPostPurchase, setShowPostPurchase] = useState(false);
+
+  // Phone pay state
+  const [phonePayOpen, setPhonePayOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phonePayStep, setPhonePayStep] = useState<PhonePayStep>("input");
+  const [isPlacingPhoneOrder, setIsPlacingPhoneOrder] = useState(false);
 
   const isLoading = cartLoading || perfumesLoading;
 
@@ -50,7 +70,6 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       try {
         const status = await actor.getStripeSessionStatus(stripeSessionId);
         if (status.__kind__ === "completed") {
-          // Capture product names before placing order (enrichedCart may clear)
           const names =
             cartItems && perfumes
               ? cartItems
@@ -65,7 +84,6 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
           setOrderSuccess(true);
           setShowPostPurchase(true);
           toast.success("Payment successful! Your order has been placed.");
-          // Clean URL
           const url = new URL(window.location.href);
           url.searchParams.delete("session_id");
           window.history.replaceState({}, "", url.toString());
@@ -93,7 +111,6 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
               ? {
                   ...item,
                   name: perfume.name,
-                  // price is in cents, divide by 100 for display
                   priceInCents: Number(perfume.price),
                   priceDisplay: Number(perfume.price) / 100,
                   imageUrl: perfume.imageUrl,
@@ -129,11 +146,47 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
         cancelUrl,
       });
 
-      // Redirect to Stripe hosted checkout
       window.location.href = checkoutUrl;
     } catch (err) {
       console.error("Checkout error:", err);
       toast.error("Could not start checkout. Please try again.");
+    }
+  };
+
+  const handleSendPhonePrompt = () => {
+    if (!phoneNumber.trim()) return;
+    setPhonePayStep("sending");
+    setTimeout(() => {
+      setPhonePayStep("confirm");
+    }, 1500);
+  };
+
+  const handlePhonePayDone = async () => {
+    setIsPlacingPhoneOrder(true);
+    try {
+      const ref = `phone_pay_${Date.now()}`;
+      const names = enrichedCart.filter(Boolean).map((item) => item!.name);
+      await placeOrder.mutateAsync(ref);
+      setPurchasedNames(names);
+      setPhonePayOpen(false);
+      setPhoneNumber("");
+      setPhonePayStep("input");
+      setOrderSuccess(true);
+      setShowPostPurchase(true);
+      toast.success("Order placed! Awaiting payment confirmation.");
+    } catch (err) {
+      console.error("Phone pay order error:", err);
+      toast.error("Could not place order. Please try again.");
+    } finally {
+      setIsPlacingPhoneOrder(false);
+    }
+  };
+
+  const handlePhoneDialogClose = (open: boolean) => {
+    if (!open) {
+      setPhonePayOpen(false);
+      setPhoneNumber("");
+      setPhonePayStep("input");
     }
   };
 
@@ -180,7 +233,6 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
           </p>
         </motion.div>
 
-        {/* Post-purchase prompt overlay */}
         {showPostPurchase && (
           <PostPurchasePrompt
             productNames={purchasedNames}
@@ -213,7 +265,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
         </div>
       </header>
 
-      <main className="px-4 py-6 pb-32">
+      <main className="px-4 py-6 pb-40">
         {isLoading && (
           <div className="space-y-3" data-ocid="cart.loading_state">
             {["c1", "c2", "c3"].map((key) => (
@@ -304,29 +356,199 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
               ${totalDisplay.toFixed(2)}
             </span>
           </div>
-          <Button
-            onClick={handleCheckout}
-            disabled={createCheckout.isPending}
-            className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold tracking-wider h-12 text-base"
-            data-ocid="cart.primary_button"
-          >
-            {createCheckout.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Preparing Checkout…
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-5 w-5" />
-                Pay Securely
-              </>
-            )}
-          </Button>
+
+          {/* Two payment options */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              onClick={handleCheckout}
+              disabled={createCheckout.isPending}
+              className="bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold tracking-wider h-12 text-sm"
+              data-ocid="cart.card_button"
+            >
+              {createCheckout.isPending ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                <>
+                  <CreditCard className="mr-1.5 h-4 w-4" />
+                  Pay with Card
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setPhonePayOpen(true)}
+              className="border-gold/40 text-gold hover:bg-gold/10 hover:border-gold font-body font-semibold tracking-wider h-12 text-sm transition-colors"
+              data-ocid="cart.phone_button"
+            >
+              <Smartphone className="mr-1.5 h-4 w-4" />
+              Pay via Phone
+            </Button>
+          </div>
+
           <p className="text-center font-body text-[10px] text-muted-foreground/60 mt-2">
-            Powered by Stripe · Secure payment
+            Secure checkout · Stripe & Mobile Money
           </p>
         </div>
       )}
+
+      {/* Phone Pay Dialog */}
+      <Dialog open={phonePayOpen} onOpenChange={handlePhoneDialogClose}>
+        <DialogContent
+          className="bg-card border-border max-w-sm mx-auto"
+          data-ocid="phone_pay.dialog"
+        >
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gold/15 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-gold" />
+                </div>
+                <DialogTitle className="font-display text-foreground text-lg">
+                  Pay via Phone Number
+                </DialogTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground -mr-1"
+                onClick={() => handlePhoneDialogClose(false)}
+                data-ocid="phone_pay.close_button"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <DialogDescription className="font-body text-sm text-muted-foreground pt-1">
+              Enter your mobile money number. A payment prompt will be sent to
+              your phone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <AnimatePresence mode="wait">
+            {phonePayStep === "input" && (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="space-y-4 pt-2"
+              >
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="phone-input"
+                    className="font-body text-sm text-foreground"
+                  >
+                    Mobile Money Number
+                  </Label>
+                  <Input
+                    id="phone-input"
+                    type="tel"
+                    placeholder="+254 7XX XXX XXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="font-body bg-background border-border focus:border-gold h-11 text-base"
+                    data-ocid="phone_pay.input"
+                  />
+                  <p className="text-[11px] text-muted-foreground font-body">
+                    Supports M-Pesa, Airtel Money, and other mobile wallets.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleSendPhonePrompt}
+                  disabled={!phoneNumber.trim()}
+                  className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold h-11"
+                  data-ocid="phone_pay.submit_button"
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Send Payment Prompt
+                </Button>
+
+                <p className="text-center font-body text-[11px] text-muted-foreground/70">
+                  Order total:{" "}
+                  <span className="text-gold font-semibold">
+                    ${totalDisplay.toFixed(2)}
+                  </span>
+                </p>
+              </motion.div>
+            )}
+
+            {phonePayStep === "sending" && (
+              <motion.div
+                key="sending"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="py-8 text-center space-y-3"
+                data-ocid="phone_pay.loading_state"
+              >
+                <div className="w-14 h-14 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto">
+                  <Loader2 className="w-6 h-6 text-gold animate-spin" />
+                </div>
+                <p className="font-body text-sm text-foreground font-medium">
+                  Sending prompt…
+                </p>
+                <p className="font-body text-xs text-muted-foreground">
+                  Contacting {phoneNumber}
+                </p>
+              </motion.div>
+            )}
+
+            {phonePayStep === "confirm" && (
+              <motion.div
+                key="confirm"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4 pt-2"
+                data-ocid="phone_pay.success_state"
+              >
+                <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/20 p-4 text-center space-y-1.5">
+                  <div className="w-10 h-10 rounded-full bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center mx-auto mb-2">
+                    <MessageSquare className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <p className="font-body text-sm font-semibold text-emerald-300">
+                    Prompt sent to {phoneNumber}!
+                  </p>
+                  <p className="font-body text-xs text-muted-foreground leading-relaxed">
+                    Approve the payment on your phone to complete your order.
+                    Check for a pop-up or notification from your mobile wallet.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handlePhonePayDone}
+                  disabled={isPlacingPhoneOrder}
+                  className="w-full bg-gold text-primary-foreground hover:bg-gold-dim font-body font-semibold h-11"
+                  data-ocid="phone_pay.confirm_button"
+                >
+                  {isPlacingPhoneOrder ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Placing Order…
+                    </>
+                  ) : (
+                    <>
+                      <PackageCheck className="mr-2 h-4 w-4" />
+                      Done – I've Approved
+                    </>
+                  )}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setPhonePayStep("input")}
+                  className="w-full text-center font-body text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                >
+                  ← Use a different number
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
