@@ -1,3 +1,4 @@
+import { PartnerLinksSection } from "@/components/PartnerLinksSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -986,6 +987,7 @@ export function PartnerPage() {
               </div>
             </motion.div>
 
+            <PartnerLinksSection />
             {/* Commission explanation */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}

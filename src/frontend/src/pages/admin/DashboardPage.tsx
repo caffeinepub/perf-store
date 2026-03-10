@@ -1,3 +1,4 @@
+import { TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
 import type { AdminPage } from "../../components/admin/AdminLayout";
 import {
@@ -43,6 +44,24 @@ export function DashboardPage({
     .filter((t) => t.type === "deposit")
     .reduce((sum, t) => sum + t.amount, 0);
   const balance = totalCommission + totalDeposited - totalWithdrawn;
+
+  // Today's earnings
+  const today = new Date().toISOString().split("T")[0];
+  const todayTxs = transactions.filter((t) => t.date === today);
+  const todayCommission = todayTxs
+    .filter((t) => t.type === "commission")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const todayWithdrawals = todayTxs
+    .filter((t) => t.type === "withdrawal")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const todayNet = todayCommission - todayWithdrawals;
+
+  const todayFormatted = new Date().toLocaleDateString("en-KE", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const stats = [
     {
@@ -123,6 +142,70 @@ export function DashboardPage({
 
   return (
     <div className="p-6 space-y-8">
+      {/* Today's Earnings Hero */}
+      <section className="mb-2" data-ocid="dashboard.card">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-blue-100 text-xs font-body tracking-wider uppercase">
+                Today's Earnings
+              </p>
+              <p className="font-display text-lg font-bold mt-0.5">
+                {todayFormatted}
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-blue-200/60" />
+          </div>
+
+          {todayTxs.length === 0 ? (
+            <p className="text-blue-200/70 text-sm font-body">
+              No transactions recorded today
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/10 rounded-xl p-3">
+                <p className="text-blue-100 text-[10px] font-body uppercase tracking-wider mb-1">
+                  Commission
+                </p>
+                <p className="font-display text-xl font-bold">
+                  KES {todayCommission.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3">
+                <p className="text-blue-100 text-[10px] font-body uppercase tracking-wider mb-1">
+                  Withdrawals
+                </p>
+                <p className="font-display text-xl font-bold">
+                  KES {todayWithdrawals.toLocaleString()}
+                </p>
+              </div>
+              <div
+                className={`rounded-xl p-3 ${
+                  todayNet >= 0 ? "bg-emerald-500/20" : "bg-red-500/20"
+                }`}
+              >
+                <p className="text-blue-100 text-[10px] font-body uppercase tracking-wider mb-1">
+                  Net
+                </p>
+                <p
+                  className={`font-display text-xl font-bold ${
+                    todayNet >= 0 ? "text-emerald-200" : "text-red-200"
+                  }`}
+                >
+                  {todayNet >= 0 ? "+" : "-"}KES{" "}
+                  {Math.abs(todayNet).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </section>
+
       {/* Stats grid */}
       <section>
         <h2 className="font-display text-base font-bold text-foreground mb-4">

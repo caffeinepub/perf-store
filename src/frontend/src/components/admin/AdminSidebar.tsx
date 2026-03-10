@@ -6,6 +6,7 @@ import {
   LogOut,
   Package,
   Users,
+  X,
 } from "lucide-react";
 import type { AdminPage } from "./AdminLayout";
 
@@ -13,6 +14,7 @@ interface Props {
   activePage: AdminPage;
   onNavigate: (page: AdminPage) => void;
   onLogout: () => void;
+  onClose?: () => void;
 }
 
 const navItems: {
@@ -53,11 +55,16 @@ const navItems: {
   },
 ];
 
-export function AdminSidebar({ activePage, onNavigate, onLogout }: Props) {
+export function AdminSidebar({
+  activePage,
+  onNavigate,
+  onLogout,
+  onClose,
+}: Props) {
   return (
     <aside className="w-64 shrink-0 bg-sidebar flex flex-col h-full border-r border-sidebar-border">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5 border-b border-sidebar-border/50">
+      <div className="px-5 pt-6 pb-5 border-b border-sidebar-border/50 relative">
         <div className="flex items-center gap-3">
           <img
             src="/assets/generated/perf-admin-logo-transparent.dim_48x48.png"
@@ -73,6 +80,16 @@ export function AdminSidebar({ activePage, onNavigate, onLogout }: Props) {
             </p>
           </div>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 transition-colors"
+            data-ocid="nav.close_button"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* LEMA branding strip */}
@@ -93,7 +110,10 @@ export function AdminSidebar({ activePage, onNavigate, onLogout }: Props) {
             <button
               key={id}
               type="button"
-              onClick={() => onNavigate(id)}
+              onClick={() => {
+                onNavigate(id);
+                onClose?.();
+              }}
               className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group ${
                 isActive
                   ? "bg-sidebar-accent text-sidebar-primary font-semibold"

@@ -25,23 +25,23 @@
 
 @layer base {
   :root {
-    /* Admin Panel — Light main content, dark sidebar */
-    --background: 0.975 0.003 250;
+    /* Admin Panel — Light blueish main content, dark sidebar */
+    --background: 0.965 0.012 230;
     --foreground: 0.18 0.02 255;
 
-    --card: 1 0 0;
+    --card: 0.99 0.006 230;
     --card-foreground: 0.18 0.02 255;
 
-    --popover: 1 0 0;
+    --popover: 0.99 0.006 230;
     --popover-foreground: 0.18 0.02 255;
 
     --primary: 0.22 0.04 264;
     --primary-foreground: 0.98 0 0;
 
-    --secondary: 0.94 0.006 250;
+    --secondary: 0.93 0.012 230;
     --secondary-foreground: 0.22 0.04 264;
 
-    --muted: 0.94 0.006 250;
+    --muted: 0.93 0.012 230;
     --muted-foreground: 0.52 0.02 255;
 
     --accent: 0.9 0.01 264;
@@ -50,8 +50,8 @@
     --destructive: 0.55 0.22 25;
     --destructive-foreground: 0.98 0 0;
 
-    --border: 0.9 0.008 250;
-    --input: 0.9 0.008 250;
+    --border: 0.89 0.012 230;
+    --input: 0.89 0.012 230;
     --ring: 0.68 0.14 56;
 
     --radius: 0.5rem;

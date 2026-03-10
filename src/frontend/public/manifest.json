@@ -7,7 +7,7 @@
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "tabbed",
   "display_override": [
     "tabbed",
     "window-controls-overlay",
@@ -20,13 +20,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/assets/generated/pwa-icon.dim_512x512.png",
+      "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+      "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
@@ -61,7 +61,7 @@
       "url": "/?tab=home",
       "icons": [
         {
-          "src": "/assets/generated/shortcut-home.dim_96x96.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -74,7 +74,7 @@
       "url": "/?tab=stores",
       "icons": [
         {
-          "src": "/assets/generated/shortcut-stores.dim_96x96.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -87,7 +87,7 @@
       "url": "/?tab=cart",
       "icons": [
         {
-          "src": "/assets/generated/shortcut-cart.dim_96x96.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -100,7 +100,7 @@
       "url": "/?tab=orders",
       "icons": [
         {
-          "src": "/assets/generated/shortcut-orders.dim_96x96.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -113,7 +113,7 @@
       "url": "/?tab=partner",
       "icons": [
         {
-          "src": "/assets/generated/shortcut-partners.dim_96x96.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "96x96",
           "type": "image/png"
         }
@@ -196,14 +196,14 @@
       "type": "application/json",
       "screenshots": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "192x192",
           "label": "Perf Quick Shop widget"
         }
       ],
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "192x192"
         }
       ],
@@ -219,9 +219,9 @@
   },
   "launch_handler": {
     "client_mode": [
-      "focus-existing",
+      "navigate-new",
       "navigate-existing",
-      "navigate-new"
+      "focus-existing"
     ]
   },
   "file_handlers": [
@@ -238,7 +238,7 @@
       },
       "icons": [
         {
-          "src": "/assets/generated/pwa-icon-192.dim_192x192.png",
+          "src": "/assets/uploads/ChatGPT-Image-Mar-10-2026-12_13_57-PM-1.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -250,10 +250,10 @@
     "estimate": true
   },
   "company": "LEMA",
-  "build_date": "2026-03-09",
+  "build_date": "2026-03-10",
   "build_year": "2026",
-  "build_time": "13:09:52 UTC",
-  "build_timestamp": "2026-03-09T13:09:52.621Z",
+  "build_time": "12:13:57 UTC",
+  "build_timestamp": "2026-03-10T12:13:57.000Z",
   "service_provider": {
     "name": "Adrian Were",
     "phone": "0706130805"
