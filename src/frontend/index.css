@@ -25,53 +25,53 @@
 
 @layer base {
   :root {
-    /* Admin Panel — Light blueish main content, dark sidebar */
-    --background: 0.965 0.012 230;
-    --foreground: 0.18 0.02 255;
+    /* Dark mode */
+    --background: 0.07 0.01 264;
+    --foreground: 0.93 0.01 255;
 
-    --card: 0.99 0.006 230;
-    --card-foreground: 0.18 0.02 255;
+    --card: 0.10 0.015 264;
+    --card-foreground: 0.93 0.01 255;
 
-    --popover: 0.99 0.006 230;
-    --popover-foreground: 0.18 0.02 255;
+    --popover: 0.10 0.015 264;
+    --popover-foreground: 0.93 0.01 255;
 
-    --primary: 0.22 0.04 264;
-    --primary-foreground: 0.98 0 0;
+    --primary: 0.72 0.14 56;
+    --primary-foreground: 0.12 0.01 264;
 
-    --secondary: 0.93 0.012 230;
-    --secondary-foreground: 0.22 0.04 264;
+    --secondary: 0.13 0.02 264;
+    --secondary-foreground: 0.88 0.01 255;
 
-    --muted: 0.93 0.012 230;
-    --muted-foreground: 0.52 0.02 255;
+    --muted: 0.13 0.02 264;
+    --muted-foreground: 0.55 0.02 255;
 
-    --accent: 0.9 0.01 264;
-    --accent-foreground: 0.22 0.04 264;
+    --accent: 0.15 0.025 264;
+    --accent-foreground: 0.88 0.01 255;
 
     --destructive: 0.55 0.22 25;
     --destructive-foreground: 0.98 0 0;
 
-    --border: 0.89 0.012 230;
-    --input: 0.89 0.012 230;
-    --ring: 0.68 0.14 56;
+    --border: 0.18 0.02 264;
+    --input: 0.18 0.02 264;
+    --ring: 0.72 0.14 56;
 
     --radius: 0.5rem;
 
     /* Chart */
-    --chart-1: 0.68 0.14 56;
-    --chart-2: 0.55 0.17 148;
+    --chart-1: 0.72 0.14 56;
+    --chart-2: 0.6 0.17 148;
     --chart-3: 0.55 0.22 25;
     --chart-4: 0.55 0.18 262;
     --chart-5: 0.65 0.16 280;
 
-    /* Sidebar — deep navy */
-    --sidebar: 0.2 0.04 264;
+    /* Sidebar — deep dark */
+    --sidebar: 0.05 0.01 264;
     --sidebar-foreground: 0.88 0.01 255;
-    --sidebar-primary: 0.68 0.14 56;
-    --sidebar-primary-foreground: 0.18 0.04 264;
-    --sidebar-accent: 0.26 0.045 264;
+    --sidebar-primary: 0.72 0.14 56;
+    --sidebar-primary-foreground: 0.12 0.01 264;
+    --sidebar-accent: 0.12 0.02 264;
     --sidebar-accent-foreground: 0.9 0.01 264;
-    --sidebar-border: 0.27 0.04 264;
-    --sidebar-ring: 0.68 0.14 56;
+    --sidebar-border: 0.22 0.02 264;
+    --sidebar-ring: 0.72 0.14 56;
 
     /* Gold accent */
     --gold: 0.72 0.14 56;
@@ -125,7 +125,7 @@
   }
 
   .sidebar-item {
-    color: oklch(0.65 0.02 255);
+    color: oklch(0.55 0.02 255);
   }
 
   .sidebar-item:hover {
@@ -134,35 +134,35 @@
   }
 
   .status-pending {
-    background-color: oklch(0.97 0.05 68);
-    color: oklch(0.52 0.15 58);
-    border-color: oklch(0.88 0.09 65);
+    background-color: oklch(0.22 0.05 68);
+    color: oklch(0.82 0.12 65);
+    border-color: oklch(0.35 0.09 65);
   }
 
   .status-approved {
-    background-color: oklch(0.96 0.04 148);
-    color: oklch(0.42 0.15 148);
-    border-color: oklch(0.85 0.08 148);
+    background-color: oklch(0.2 0.05 148);
+    color: oklch(0.75 0.14 148);
+    border-color: oklch(0.32 0.08 148);
   }
 
   .status-rejected {
-    background-color: oklch(0.97 0.03 25);
-    color: oklch(0.5 0.19 25);
-    border-color: oklch(0.88 0.07 25);
+    background-color: oklch(0.22 0.05 25);
+    color: oklch(0.75 0.16 25);
+    border-color: oklch(0.35 0.08 25);
   }
 
   .badge-commission {
-    background-color: oklch(0.96 0.04 148);
-    color: oklch(0.42 0.15 148);
+    background-color: oklch(0.2 0.05 148);
+    color: oklch(0.75 0.14 148);
   }
 
   .badge-withdrawal {
-    background-color: oklch(0.97 0.03 25);
-    color: oklch(0.5 0.19 25);
+    background-color: oklch(0.22 0.05 25);
+    color: oklch(0.75 0.16 25);
   }
 
   .badge-deposit {
-    background-color: oklch(0.96 0.04 262);
-    color: oklch(0.42 0.16 262);
+    background-color: oklch(0.2 0.05 262);
+    color: oklch(0.75 0.14 262);
   }
 }

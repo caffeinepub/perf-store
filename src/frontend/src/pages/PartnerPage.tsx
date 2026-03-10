@@ -698,42 +698,42 @@ export function PartnerPage() {
                       className="space-y-4"
                     >
                       {/* Payout method selector */}
-                      <div className="flex gap-2 p-1 bg-secondary/50 rounded-lg border border-border/50">
+                      <div className="grid grid-cols-2 gap-1.5 p-1 bg-secondary/50 rounded-lg border border-border/50">
                         <button
                           type="button"
                           onClick={() => setPayoutMethodType("stripe")}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "stripe" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "stripe" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
                           data-ocid="partner.tab"
                         >
-                          <Shield className="w-3.5 h-3.5" />
-                          Stripe
+                          <Shield className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Stripe</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setPayoutMethodType("mobile_money")}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "mobile_money" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "mobile_money" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
                           data-ocid="partner.tab"
                         >
-                          <Phone className="w-3.5 h-3.5" />
-                          Mobile Money
+                          <Phone className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">M-Money</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setPayoutMethodType("till_number")}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "till_number" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "till_number" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
                           data-ocid="partner.tab"
                         >
-                          <Building2 className="w-3.5 h-3.5" />
-                          Till
+                          <Building2 className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Till No.</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setPayoutMethodType("paybill")}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "paybill" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "paybill" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
                           data-ocid="partner.tab"
                         >
-                          <Landmark className="w-3.5 h-3.5" />
-                          Paybill
+                          <Landmark className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Paybill</span>
                         </button>
                       </div>
 
