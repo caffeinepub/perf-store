@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   AlertCircle,
   ArrowDownToLine,
+  Building2,
   Camera,
   CheckCircle,
   CheckCircle2,
@@ -17,6 +18,7 @@ import {
   DollarSign,
   Edit2,
   KeyRound,
+  Landmark,
   Link,
   Loader2,
   LogOut,
@@ -137,12 +139,15 @@ export function PartnerPage() {
   const [connectAccountId, setConnectAccountId] = useState("");
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [payoutMethodType, setPayoutMethodType] = useState<
-    "stripe" | "mobile_money"
+    "stripe" | "mobile_money" | "till_number" | "paybill"
   >("stripe");
   const [mobileMoneyNumber, setMobileMoneyNumber] = useState("");
   const [mobileMoneyProvider, setMobileMoneyProvider] = useState<
     "mpesa" | "airtel" | "tkash"
   >("mpesa");
+  const [tillNumber, setTillNumber] = useState("");
+  const [paybillNumber, setPaybillNumber] = useState("");
+  const [paybillAccount, setPaybillAccount] = useState("");
 
   // Admin reset password form
   const [resetTargetEmail, setResetTargetEmail] = useState<string | null>(null);
@@ -207,6 +212,40 @@ export function PartnerPage() {
         await savePayoutAccount.mutateAsync(prefixed);
         toast.success("Mobile money payout method saved!");
         setMobileMoneyNumber("");
+        setIsEditingAccount(false);
+      } catch {
+        toast.error("Failed to save payout method. Please try again.");
+      }
+    } else if (payoutMethodType === "till_number") {
+      const num = tillNumber.trim().replace(/\s/g, "");
+      if (!/^\d{5,6}$/.test(num)) {
+        toast.error("Please enter a valid Till Number (5-6 digits)");
+        return;
+      }
+      try {
+        await savePayoutAccount.mutateAsync(`till:${num}`);
+        toast.success("Till Number payout method saved!");
+        setTillNumber("");
+        setIsEditingAccount(false);
+      } catch {
+        toast.error("Failed to save payout method. Please try again.");
+      }
+    } else if (payoutMethodType === "paybill") {
+      const num = paybillNumber.trim().replace(/\s/g, "");
+      const acct = paybillAccount.trim();
+      if (!/^\d{5,6}$/.test(num)) {
+        toast.error("Please enter a valid Paybill Number (5-6 digits)");
+        return;
+      }
+      if (!acct) {
+        toast.error("Please enter an Account Number");
+        return;
+      }
+      try {
+        await savePayoutAccount.mutateAsync(`paybill:${num}:${acct}`);
+        toast.success("Paybill payout method saved!");
+        setPaybillNumber("");
+        setPaybillAccount("");
         setIsEditingAccount(false);
       } catch {
         toast.error("Failed to save payout method. Please try again.");
@@ -332,6 +371,8 @@ export function PartnerPage() {
       payoutAccount.startsWith("mpesa:") ||
       payoutAccount.startsWith("airtel:") ||
       payoutAccount.startsWith("tkash:");
+    const isTill = payoutAccount.startsWith("till:");
+    const isPaybill = payoutAccount.startsWith("paybill:");
     if (isMobileMoney && payoutMethodType === "stripe") {
       const provider = payoutAccount.split(":")[0] as
         | "mpesa"
@@ -339,7 +380,22 @@ export function PartnerPage() {
         | "tkash";
       setPayoutMethodType("mobile_money");
       setMobileMoneyProvider(provider);
-    } else if (!isMobileMoney && payoutMethodType === "mobile_money") {
+    } else if (isTill && payoutMethodType !== "till_number") {
+      setPayoutMethodType("till_number");
+      setTillNumber(payoutAccount.split(":")[1] || "");
+    } else if (isPaybill && payoutMethodType !== "paybill") {
+      setPayoutMethodType("paybill");
+      const parts = payoutAccount.split(":");
+      setPaybillNumber(parts[1] || "");
+      setPaybillAccount(parts[2] || "");
+    } else if (
+      !isMobileMoney &&
+      !isTill &&
+      !isPaybill &&
+      (payoutMethodType === "mobile_money" ||
+        payoutMethodType === "till_number" ||
+        payoutMethodType === "paybill")
+    ) {
       setPayoutMethodType("stripe");
     }
   }
@@ -544,6 +600,9 @@ export function PartnerPage() {
                         airtel: "Airtel Money",
                         tkash: "T-Kash",
                       };
+                      const isTillNumber = payoutAccount.startsWith("till:");
+                      const isPaybillMethod =
+                        payoutAccount.startsWith("paybill:");
                       let displayValue = maskAccountId(payoutAccount);
                       let methodLabel = "Stripe Connect";
                       let methodIcon = (
@@ -556,6 +615,22 @@ export function PartnerPage() {
                         methodLabel = "Mobile Money";
                         methodIcon = (
                           <Phone className="w-4 h-4 text-emerald-400" />
+                        );
+                      } else if (isTillNumber) {
+                        const tillNum = payoutAccount.split(":")[1] || "";
+                        displayValue = `Till: ${tillNum}`;
+                        methodLabel = "Till Number";
+                        methodIcon = (
+                          <Building2 className="w-4 h-4 text-emerald-400" />
+                        );
+                      } else if (isPaybillMethod) {
+                        const parts = payoutAccount.split(":");
+                        const pbNum = parts[1] || "";
+                        const pbAcct = parts[2] || "";
+                        displayValue = `${pbNum} / Acc: ${pbAcct}`;
+                        methodLabel = "Paybill";
+                        methodIcon = (
+                          <Landmark className="w-4 h-4 text-emerald-400" />
                         );
                       }
                       return (
@@ -587,6 +662,16 @@ export function PartnerPage() {
                                     "mpesa",
                                 );
                                 setMobileMoneyNumber(num || "");
+                              } else if (isTillNumber) {
+                                setPayoutMethodType("till_number");
+                                setTillNumber(
+                                  payoutAccount.split(":")[1] || "",
+                                );
+                              } else if (isPaybillMethod) {
+                                setPayoutMethodType("paybill");
+                                const parts = payoutAccount.split(":");
+                                setPaybillNumber(parts[1] || "");
+                                setPaybillAccount(parts[2] || "");
                               } else {
                                 setPayoutMethodType("stripe");
                                 setConnectAccountId(payoutAccount);
@@ -631,6 +716,24 @@ export function PartnerPage() {
                           <Phone className="w-3.5 h-3.5" />
                           Mobile Money
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setPayoutMethodType("till_number")}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "till_number" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          data-ocid="partner.tab"
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                          Till
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPayoutMethodType("paybill")}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-body font-medium transition-all ${payoutMethodType === "paybill" ? "bg-background text-foreground shadow-sm border border-border/80" : "text-muted-foreground hover:text-foreground"}`}
+                          data-ocid="partner.tab"
+                        >
+                          <Landmark className="w-3.5 h-3.5" />
+                          Paybill
+                        </button>
                       </div>
 
                       {payoutMethodType === "stripe" ? (
@@ -652,10 +755,80 @@ export function PartnerPage() {
                             data-ocid="partner.input"
                           />
                         </div>
+                      ) : payoutMethodType === "till_number" ? (
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="till-number"
+                            className="font-body text-xs text-muted-foreground tracking-widets uppercase"
+                          >
+                            Till Number
+                          </Label>
+                          <Input
+                            id="till-number"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="123456"
+                            maxLength={6}
+                            value={tillNumber}
+                            onChange={(e) =>
+                              setTillNumber(e.target.value.replace(/\D/g, ""))
+                            }
+                            className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                            data-ocid="partner.input"
+                          />
+                          <p className="font-body text-[10px] text-muted-foreground/60">
+                            Enter your M-Pesa Buy Goods Till Number (5-6 digits)
+                          </p>
+                        </div>
+                      ) : payoutMethodType === "paybill" ? (
+                        <div className="space-y-3">
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="paybill-number"
+                              className="font-body text-xs text-muted-foreground tracking-widets uppercase"
+                            >
+                              Paybill Number
+                            </Label>
+                            <Input
+                              id="paybill-number"
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="123456"
+                              maxLength={6}
+                              value={paybillNumber}
+                              onChange={(e) =>
+                                setPaybillNumber(
+                                  e.target.value.replace(/\D/g, ""),
+                                )
+                              }
+                              className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                              data-ocid="partner.input"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="paybill-account"
+                              className="font-body text-xs text-muted-foreground tracking-widets uppercase"
+                            >
+                              Account Number
+                            </Label>
+                            <Input
+                              id="paybill-account"
+                              type="text"
+                              placeholder="e.g. Store001"
+                              value={paybillAccount}
+                              onChange={(e) =>
+                                setPaybillAccount(e.target.value)
+                              }
+                              className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60"
+                              data-ocid="partner.input"
+                            />
+                          </div>
+                        </div>
                       ) : (
                         <div className="space-y-3">
                           <div className="space-y-1.5">
-                            <Label className="font-body text-xs text-muted-foreground tracking-widest uppercase">
+                            <Label className="font-body text-xs text-muted-foreground tracking-widets uppercase">
                               Provider
                             </Label>
                             <div className="flex gap-2">
@@ -706,7 +879,11 @@ export function PartnerPage() {
                         </span>
                         {payoutMethodType === "stripe"
                           ? `Connect your Stripe account to receive automatic payouts when your products sell. Your share (${partnerShareNum}%) is transferred within 2 business days of each sale. The platform retains ${commissionRateNum}% as a service fee.`
-                          : `Receive payouts directly to your mobile money account. Your share (${partnerShareNum}%) is sent within 2 business days of each sale.`}
+                          : payoutMethodType === "till_number"
+                            ? `Receive payouts to your M-Pesa Buy Goods Till Number. Your share (${partnerShareNum}%) is sent within 2 business days of each sale.`
+                            : payoutMethodType === "paybill"
+                              ? `Receive payouts via your M-Pesa Paybill account. Your share (${partnerShareNum}%) is sent to the specified account number within 2 business days.`
+                              : `Receive payouts directly to your mobile money account. Your share (${partnerShareNum}%) is sent within 2 business days of each sale.`}
                       </p>
 
                       <div className="flex gap-2">
@@ -725,12 +902,20 @@ export function PartnerPage() {
                             <>
                               {payoutMethodType === "stripe" ? (
                                 <Shield className="w-4 h-4 mr-2" />
+                              ) : payoutMethodType === "till_number" ? (
+                                <Building2 className="w-4 h-4 mr-2" />
+                              ) : payoutMethodType === "paybill" ? (
+                                <Landmark className="w-4 h-4 mr-2" />
                               ) : (
                                 <Phone className="w-4 h-4 mr-2" />
                               )}
                               {payoutMethodType === "stripe"
                                 ? "Connect Account"
-                                : "Save Mobile Money"}
+                                : payoutMethodType === "till_number"
+                                  ? "Save Till Number"
+                                  : payoutMethodType === "paybill"
+                                    ? "Save Paybill"
+                                    : "Save Mobile Money"}
                             </>
                           )}
                         </Button>
@@ -742,6 +927,9 @@ export function PartnerPage() {
                               setIsEditingAccount(false);
                               setConnectAccountId("");
                               setMobileMoneyNumber("");
+                              setTillNumber("");
+                              setPaybillNumber("");
+                              setPaybillAccount("");
                             }}
                             className="border-border text-muted-foreground hover:text-foreground font-body text-sm"
                             data-ocid="partner.cancel_button"
