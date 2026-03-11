@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -8,15 +9,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle,
   CreditCard,
   Loader2,
+  MapPin,
   MessageSquare,
   PackageCheck,
   ShoppingCart,
   Smartphone,
+  Store,
+  Truck,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -29,7 +35,10 @@ import {
   useCreateCheckoutSession,
   usePerfumes,
   usePlaceOrder,
+  usePlaceOrderWithDelivery,
 } from "../hooks/useQueries";
+
+const DELIVERY_FEE_KES = 50;
 
 interface CartPageProps {
   onOrderPlaced: () => void;
@@ -37,11 +46,384 @@ interface CartPageProps {
 }
 
 type PhonePayStep = "input" | "sending" | "confirm";
+type DeliveryType = "doorstep" | "pickup" | "";
+
+interface DeliveryState {
+  deliveryType: DeliveryType;
+  hostelName: string;
+  area: string;
+  roomNumber: string;
+  subDomain: string;
+  manualLocation: string;
+  useManual: boolean;
+}
+
+const HOSTEL_GROUPS: Array<{ area: string; hostels: string[] }> = [
+  {
+    area: "Maseno Main Campus",
+    hostels: [
+      "Nyabundi Hostels",
+      "Kilimanjaro Hostels",
+      "Mara Hostels",
+      "Nzoia Hostels",
+      "Niles Hostels",
+      "Kit-Mikayi Hostels",
+      "Tsavo Hostels",
+      "Elgon Hostels",
+      "Makerere Hostels",
+      "Equator Hostels",
+      "ACV Hostels",
+      "Rusinga Hostels",
+      "Ndere Hostels",
+    ],
+  },
+  {
+    area: "Around Market",
+    hostels: [
+      "Villa Costa Hostels",
+      "Bens Hostels",
+      "Silwal Hostels",
+      "Rams Hostels",
+    ],
+  },
+  {
+    area: "Around Marisu",
+    hostels: [
+      "Marisu Hostels",
+      "Pink View Hostels",
+      "Mbwa Kali Hostels",
+      "Godrian Hostel",
+    ],
+  },
+  {
+    area: "Around Niles",
+    hostels: ["Amazon Hostel"],
+  },
+  {
+    area: "Around Lela",
+    hostels: ["Lela Station"],
+  },
+  {
+    area: "Around Nyawita",
+    hostels: [],
+  },
+];
+
+function DeliverySection({
+  delivery,
+  setDelivery,
+  wantDeliveryFee,
+  setWantDeliveryFee,
+}: {
+  delivery: DeliveryState;
+  setDelivery: (d: DeliveryState) => void;
+  wantDeliveryFee: boolean;
+  setWantDeliveryFee: (v: boolean) => void;
+}) {
+  const set = (patch: Partial<DeliveryState>) =>
+    setDelivery({ ...delivery, ...patch });
+
+  return (
+    <div
+      className="bg-card border border-border rounded-xl p-4 space-y-4"
+      data-ocid="delivery.section"
+    >
+      <div className="flex items-center gap-2">
+        <MapPin className="w-4 h-4 text-gold" />
+        <h3 className="font-display text-sm font-bold text-foreground tracking-wide">
+          Delivery Options
+        </h3>
+      </div>
+
+      {/* Delivery type toggle */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => set({ deliveryType: "doorstep" })}
+          className={`flex flex-col items-center gap-2 p-3.5 rounded-lg border transition-all ${
+            delivery.deliveryType === "doorstep"
+              ? "border-gold bg-gold/10 text-gold"
+              : "border-border bg-secondary/40 text-muted-foreground hover:border-gold/40"
+          }`}
+          data-ocid="delivery.doorstep_toggle"
+        >
+          <Truck
+            className={`w-5 h-5 ${
+              delivery.deliveryType === "doorstep"
+                ? "text-gold"
+                : "text-muted-foreground"
+            }`}
+          />
+          <span className="font-body text-xs font-semibold text-center leading-tight">
+            Doorstep
+            <br />
+            Delivery
+          </span>
+          {delivery.deliveryType === "doorstep" && (
+            <div className="w-1.5 h-1.5 rounded-full bg-gold" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => set({ deliveryType: "pickup" })}
+          className={`flex flex-col items-center gap-2 p-3.5 rounded-lg border transition-all ${
+            delivery.deliveryType === "pickup"
+              ? "border-gold bg-gold/10 text-gold"
+              : "border-border bg-secondary/40 text-muted-foreground hover:border-gold/40"
+          }`}
+          data-ocid="delivery.pickup_toggle"
+        >
+          <Store
+            className={`w-5 h-5 ${
+              delivery.deliveryType === "pickup"
+                ? "text-gold"
+                : "text-muted-foreground"
+            }`}
+          />
+          <span className="font-body text-xs font-semibold text-center leading-tight">
+            Pickup
+            <br />
+            at Store
+          </span>
+          {delivery.deliveryType === "pickup" && (
+            <div className="w-1.5 h-1.5 rounded-full bg-gold" />
+          )}
+        </button>
+      </div>
+
+      {/* Doorstep delivery fee opt-in checkbox */}
+      <AnimatePresence>
+        {delivery.deliveryType === "doorstep" && (
+          <motion.div
+            key="delivery-fee-optin"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+            className={`flex items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
+              wantDeliveryFee
+                ? "border-gold/40 bg-gold/8"
+                : "border-border bg-secondary/30"
+            }`}
+          >
+            <Checkbox
+              id="delivery-fee-checkbox"
+              checked={wantDeliveryFee}
+              onCheckedChange={(v) => setWantDeliveryFee(Boolean(v))}
+              className="mt-0.5 border-border data-[state=checked]:bg-gold data-[state=checked]:border-gold flex-shrink-0"
+              data-ocid="delivery.fee_checkbox"
+            />
+            <label
+              htmlFor="delivery-fee-checkbox"
+              className="cursor-pointer flex-1"
+            >
+              <span className="font-body text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-gold" />
+                Add doorstep delivery{" "}
+                <span className="text-gold">KES {DELIVERY_FEE_KES}</span>
+              </span>
+              <p className="font-body text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                We'll deliver from the pickup station to your doorstep.
+              </p>
+            </label>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Doorstep location fields */}
+      <AnimatePresence>
+        {delivery.deliveryType === "doorstep" && (
+          <motion.div
+            key="doorstep-fields"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3 pt-1">
+              {/* Manual location toggle */}
+              <div className="flex items-center gap-2.5">
+                <Checkbox
+                  id="manual-location"
+                  checked={delivery.useManual}
+                  onCheckedChange={(v) =>
+                    set({ useManual: Boolean(v), hostelName: "", area: "" })
+                  }
+                  className="border-border data-[state=checked]:bg-gold data-[state=checked]:border-gold"
+                  data-ocid="delivery.manual_checkbox"
+                />
+                <Label
+                  htmlFor="manual-location"
+                  className="font-body text-xs text-muted-foreground cursor-pointer"
+                >
+                  My location is not listed — I'll type it manually
+                </Label>
+              </div>
+
+              {delivery.useManual ? (
+                <div className="space-y-1.5">
+                  <Label className="font-body text-xs text-muted-foreground tracking-widest uppercase">
+                    Your Delivery Address
+                  </Label>
+                  <Textarea
+                    placeholder="E.g. Maseno town, near the market, Green Gate Apartments Room 5..."
+                    rows={3}
+                    value={delivery.manualLocation}
+                    onChange={(e) => set({ manualLocation: e.target.value })}
+                    className="bg-secondary border-border text-foreground placeholder:text-muted-foreground/50 font-body text-sm focus:border-gold/60 resize-none text-sm"
+                    data-ocid="delivery.manual_textarea"
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Hostel list */}
+                  <div className="space-y-1.5">
+                    <Label className="font-body text-xs text-muted-foreground tracking-widest uppercase">
+                      Select Your Hostel / Location
+                    </Label>
+                    <ScrollArea className="h-52 rounded-lg border border-border bg-secondary/30">
+                      <div className="p-2 space-y-3">
+                        {HOSTEL_GROUPS.map((group) => (
+                          <div key={group.area}>
+                            <p className="font-body text-[10px] text-muted-foreground tracking-widest uppercase px-2 py-1">
+                              {group.area}
+                            </p>
+                            {group.hostels.length === 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  set({
+                                    hostelName: group.area,
+                                    area: group.area,
+                                  })
+                                }
+                                className={`w-full text-left px-3 py-2 rounded-md font-body text-xs transition-colors ${
+                                  delivery.hostelName === group.area
+                                    ? "bg-gold/15 text-gold border border-gold/30"
+                                    : "text-foreground hover:bg-secondary/80"
+                                }`}
+                              >
+                                {group.area} (general area)
+                              </button>
+                            ) : (
+                              <div className="space-y-0.5">
+                                {group.hostels.map((hostel) => (
+                                  <button
+                                    key={hostel}
+                                    type="button"
+                                    onClick={() =>
+                                      set({
+                                        hostelName: hostel,
+                                        area: group.area,
+                                      })
+                                    }
+                                    className={`w-full text-left px-3 py-2 rounded-md font-body text-xs transition-colors ${
+                                      delivery.hostelName === hostel
+                                        ? "bg-gold/15 text-gold border border-gold/30"
+                                        : "text-foreground hover:bg-secondary/80"
+                                    }`}
+                                    data-ocid="delivery.hostel_item"
+                                  >
+                                    {hostel}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+
+                  {/* Room / sub-domain fields shown after hostel selected */}
+                  <AnimatePresence>
+                    {delivery.hostelName && (
+                      <motion.div
+                        key="room-fields"
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="space-y-2"
+                      >
+                        <div className="rounded-md bg-gold/5 border border-gold/20 px-3 py-2">
+                          <p className="font-body text-xs text-gold font-medium truncate">
+                            📍 {delivery.hostelName}
+                          </p>
+                          {delivery.area &&
+                            delivery.area !== delivery.hostelName && (
+                              <p className="font-body text-[10px] text-muted-foreground">
+                                {delivery.area}
+                              </p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="font-body text-xs text-muted-foreground">
+                              Room Number / Block
+                            </Label>
+                            <Input
+                              placeholder="e.g. Room 12"
+                              value={delivery.roomNumber}
+                              onChange={(e) =>
+                                set({ roomNumber: e.target.value })
+                              }
+                              className="bg-secondary border-border text-foreground font-body text-xs focus:border-gold/60 h-9"
+                              data-ocid="delivery.room_input"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="font-body text-xs text-muted-foreground">
+                              Sub-domain / Wing{" "}
+                              <span className="text-muted-foreground/50">
+                                (optional)
+                              </span>
+                            </Label>
+                            <Input
+                              placeholder="e.g. Block A"
+                              value={delivery.subDomain}
+                              onChange={(e) =>
+                                set({ subDomain: e.target.value })
+                              }
+                              className="bg-secondary border-border text-foreground font-body text-xs focus:border-gold/60 h-9"
+                              data-ocid="delivery.subdomain_input"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {delivery.deliveryType === "pickup" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="rounded-lg bg-secondary/50 border border-border px-4 py-3 flex items-center gap-2.5"
+        >
+          <Store className="w-4 h-4 text-gold flex-shrink-0" />
+          <p className="font-body text-xs text-muted-foreground">
+            You'll collect your order from the partner's store. We'll notify you
+            when it's ready.
+          </p>
+        </motion.div>
+      )}
+    </div>
+  );
+}
 
 export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const { data: cartItems, isLoading: cartLoading } = useCart();
   const { data: perfumes, isLoading: perfumesLoading } = usePerfumes();
   const placeOrder = usePlaceOrder();
+  const placeOrderWithDelivery = usePlaceOrderWithDelivery();
   const createCheckout = useCreateCheckoutSession();
   const { actor } = useActor();
 
@@ -57,7 +439,56 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   const [phonePayStep, setPhonePayStep] = useState<PhonePayStep>("input");
   const [isPlacingPhoneOrder, setIsPlacingPhoneOrder] = useState(false);
 
+  // Delivery state
+  const [delivery, setDelivery] = useState<DeliveryState>({
+    deliveryType: "",
+    hostelName: "",
+    area: "",
+    roomNumber: "",
+    subDomain: "",
+    manualLocation: "",
+    useManual: false,
+  });
+
+  // Optional delivery fee (doorstep only, unchecked by default)
+  const [wantDeliveryFee, setWantDeliveryFee] = useState(false);
+
   const isLoading = cartLoading || perfumesLoading;
+
+  const isDoorstep = delivery.deliveryType === "doorstep";
+  const showDeliveryFee = isDoorstep && wantDeliveryFee;
+
+  // Helper to validate delivery selection
+  const validateDelivery = (): boolean => {
+    if (!delivery.deliveryType) {
+      toast.error("Please select a delivery option (Doorstep or Pickup)");
+      return false;
+    }
+    if (delivery.deliveryType === "doorstep") {
+      if (delivery.useManual && !delivery.manualLocation.trim()) {
+        toast.error("Please enter your delivery address");
+        return false;
+      }
+      if (!delivery.useManual && !delivery.hostelName) {
+        toast.error("Please select your hostel or location");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Build delivery payload
+  const buildDeliveryPayload = () => ({
+    deliveryType: delivery.deliveryType || "pickup",
+    hostelName: delivery.useManual ? "" : delivery.hostelName,
+    area: delivery.useManual ? "" : delivery.area,
+    roomNumber: delivery.roomNumber,
+    manualLocation: delivery.useManual
+      ? delivery.manualLocation
+      : delivery.subDomain
+        ? `${delivery.subDomain}`
+        : "",
+  });
 
   // Handle Stripe return with session ID
   // biome-ignore lint/correctness/useExhaustiveDependencies: onOrderPlaced and placeOrder.mutateAsync are stable refs
@@ -79,7 +510,31 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
                   )
                   .filter((n): n is string => Boolean(n))
               : [];
-          await placeOrder.mutateAsync(stripeSessionId);
+
+          // Check for pending delivery info stored before Stripe redirect
+          const pendingDeliveryRaw = sessionStorage.getItem("pendingDelivery");
+          if (pendingDeliveryRaw) {
+            try {
+              const pendingDelivery = JSON.parse(pendingDeliveryRaw) as {
+                deliveryType: string;
+                hostelName: string;
+                area: string;
+                roomNumber: string;
+                manualLocation: string;
+              };
+              sessionStorage.removeItem("pendingDelivery");
+              await placeOrderWithDelivery.mutateAsync({
+                stripePaymentIntentId: stripeSessionId,
+                ...pendingDelivery,
+              });
+            } catch {
+              // Fallback to regular place order
+              await placeOrder.mutateAsync(stripeSessionId);
+            }
+          } else {
+            await placeOrder.mutateAsync(stripeSessionId);
+          }
+
           setPurchasedNames(names);
           setOrderSuccess(true);
           setShowPostPurchase(true);
@@ -128,6 +583,8 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
 
   const handleCheckout = async () => {
     if (enrichedCart.length === 0) return;
+    if (!validateDelivery()) return;
+
     try {
       const items = enrichedCart.filter(Boolean).map((item) => ({
         productName: item!.name,
@@ -136,6 +593,10 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
         priceInCents: BigInt(item!.priceInCents),
         productDescription: item!.name,
       }));
+
+      // Store delivery info before redirecting to Stripe
+      const payload = buildDeliveryPayload();
+      sessionStorage.setItem("pendingDelivery", JSON.stringify(payload));
 
       const successUrl = `${window.location.origin}?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = window.location.origin;
@@ -149,6 +610,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       window.location.href = checkoutUrl;
     } catch (err) {
       console.error("Checkout error:", err);
+      sessionStorage.removeItem("pendingDelivery");
       toast.error("Could not start checkout. Please try again.");
     }
   };
@@ -162,11 +624,16 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
   };
 
   const handlePhonePayDone = async () => {
+    if (!validateDelivery()) return;
     setIsPlacingPhoneOrder(true);
     try {
       const ref = `phone_pay_${Date.now()}`;
       const names = enrichedCart.filter(Boolean).map((item) => item!.name);
-      await placeOrder.mutateAsync(ref);
+      const payload = buildDeliveryPayload();
+      await placeOrderWithDelivery.mutateAsync({
+        stripePaymentIntentId: ref,
+        ...payload,
+      });
       setPurchasedNames(names);
       setPhonePayOpen(false);
       setPhoneNumber("");
@@ -188,6 +655,11 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       setPhoneNumber("");
       setPhonePayStep("input");
     }
+  };
+
+  const handleOpenPhonePay = () => {
+    if (!validateDelivery()) return;
+    setPhonePayOpen(true);
   };
 
   // Show processing overlay when returning from Stripe
@@ -301,7 +773,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
         )}
 
         {!isLoading && enrichedCart.length > 0 && (
-          <div className="space-y-3" data-ocid="cart.list">
+          <div className="space-y-4" data-ocid="cart.list">
             <AnimatePresence>
               {enrichedCart.map((item, i) => {
                 if (!item) return null;
@@ -341,6 +813,14 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
                 );
               })}
             </AnimatePresence>
+
+            {/* Delivery section — shown below cart items */}
+            <DeliverySection
+              delivery={delivery}
+              setDelivery={setDelivery}
+              wantDeliveryFee={wantDeliveryFee}
+              setWantDeliveryFee={setWantDeliveryFee}
+            />
           </div>
         )}
       </main>
@@ -348,13 +828,49 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       {/* Sticky checkout bar */}
       {!isLoading && enrichedCart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 pb-safe">
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-body text-sm text-muted-foreground">
-              Total
-            </span>
-            <span className="font-display text-2xl font-bold text-gold">
-              ${totalDisplay.toFixed(2)}
-            </span>
+          {/* Price breakdown */}
+          <div className="space-y-1 mb-3">
+            {showDeliveryFee ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="font-body text-xs text-muted-foreground">
+                    Subtotal
+                  </span>
+                  <span className="font-body text-sm text-foreground font-medium">
+                    ${totalDisplay.toFixed(2)}
+                  </span>
+                </div>
+                <div
+                  className="flex items-center justify-between"
+                  data-ocid="cart.delivery_fee"
+                >
+                  <span className="font-body text-xs text-muted-foreground flex items-center gap-1">
+                    <Truck className="w-3 h-3" />
+                    Delivery fee
+                  </span>
+                  <span className="font-body text-xs text-gold font-semibold">
+                    KES {DELIVERY_FEE_KES}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                  <span className="font-body text-sm text-muted-foreground">
+                    Total
+                  </span>
+                  <span className="font-display text-2xl font-bold text-gold">
+                    ${totalDisplay.toFixed(2)}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="font-body text-sm text-muted-foreground">
+                  Total
+                </span>
+                <span className="font-display text-2xl font-bold text-gold">
+                  ${totalDisplay.toFixed(2)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Two payment options */}
@@ -380,7 +896,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
 
             <Button
               variant="outline"
-              onClick={() => setPhonePayOpen(true)}
+              onClick={handleOpenPhonePay}
               className="border-gold/40 text-gold hover:bg-gold/10 hover:border-gold font-body font-semibold tracking-wider h-12 text-sm transition-colors"
               data-ocid="cart.phone_button"
             >
@@ -472,6 +988,12 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
                   <span className="text-gold font-semibold">
                     ${totalDisplay.toFixed(2)}
                   </span>
+                  {showDeliveryFee && (
+                    <span className="text-muted-foreground/60">
+                      {" "}
+                      + KES {DELIVERY_FEE_KES} delivery
+                    </span>
+                  )}
                 </p>
               </motion.div>
             )}

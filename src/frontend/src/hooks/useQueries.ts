@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CartItem,
+  DeliveryInfo,
   Order,
   PartnerProduct,
   PartnerStats,
@@ -40,11 +41,27 @@ export function useOrders() {
   const { actor, isFetching } = useActor();
   return useQuery<Order[]>({
     queryKey: ["orders"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Order[]> => {
       if (!actor) return [];
       return actor.getOrders();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useMyOrderDeliveries() {
+  const { actor } = useActor();
+  return useQuery<Array<[bigint, DeliveryInfo]>>({
+    queryKey: ["orderDeliveries"],
+    queryFn: async (): Promise<Array<[bigint, DeliveryInfo]>> => {
+      if (!actor) return [];
+      // Cast needed: backend.ts may not yet expose getMyOrderDeliveries
+      const a = actor as unknown as {
+        getMyOrderDeliveries: () => Promise<Array<[bigint, DeliveryInfo]>>;
+      };
+      return a.getMyOrderDeliveries();
+    },
+    enabled: !!actor,
   });
 }
 
@@ -152,6 +169,56 @@ export function usePlaceOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
+}
+
+export function usePlaceOrderWithDelivery() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      stripePaymentIntentId,
+      deliveryType,
+      hostelName,
+      area,
+      roomNumber,
+      manualLocation,
+    }: {
+      stripePaymentIntentId: string;
+      deliveryType: string;
+      hostelName: string;
+      area: string;
+      roomNumber: string;
+      manualLocation: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      // Cast needed: placeOrderWithDelivery exists in backend.d.ts but backend.ts may not be updated
+      const a = actor as unknown as {
+        placeOrderWithDelivery: (
+          id: string,
+          dt: string,
+          hn: string,
+          ar: string,
+          rn: string,
+          ml: string,
+        ) => Promise<void>;
+        clearCart: () => Promise<void>;
+      };
+      await a.placeOrderWithDelivery(
+        stripePaymentIntentId,
+        deliveryType,
+        hostelName,
+        area,
+        roomNumber,
+        manualLocation,
+      );
+      await a.clearCart();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orderDeliveries"] });
     },
   });
 }

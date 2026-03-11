@@ -13,10 +13,8 @@ import Float "mo:core/Float";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
 import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
-
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -35,12 +33,22 @@ actor {
     quantity : Nat;
   };
 
+  // Order type kept identical to original for stable variable compatibility
   type Order = {
     id : Nat;
     items : [CartItem];
     total : Nat;
     timestamp : Int;
     stripePaymentIntentId : Text;
+  };
+
+  // Delivery info stored separately to avoid stable variable migration issues
+  type DeliveryInfo = {
+    deliveryType : Text;
+    hostelName : Text;
+    area : Text;
+    roomNumber : Text;
+    manualLocation : Text;
   };
 
   type PartnerProduct = {
@@ -122,6 +130,7 @@ actor {
   let partnerProducts = Map.empty<Nat, PartnerProduct>();
   let carts = Map.empty<Principal, [CartItem]>();
   let orders = Map.empty<Principal, [Order]>();
+  let orderDeliveries = Map.empty<Nat, DeliveryInfo>();
   let payoutRecords = Map.empty<Principal, [PayoutRecord]>();
   let payoutAccounts = Map.empty<Principal, Text>();
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -142,7 +151,6 @@ actor {
   var stripeConfiguration : ?Stripe.StripeConfiguration = null;
 
   // Helper Functions
-  // Basic "hash" functions for password hashing (not secure, demonstration only).
   func simpleHash(input : Text) : Text {
     var h : Nat = 5381;
     input.chars().forEach(
@@ -574,6 +582,61 @@ actor {
     carts.remove(caller);
   };
 
+  // Place order and store delivery info separately (avoids stable var migration)
+  public shared ({ caller }) func placeOrderWithDelivery(
+    stripePaymentIntentId : Text,
+    deliveryType : Text,
+    hostelName : Text,
+    area : Text,
+    roomNumber : Text,
+    manualLocation : Text,
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can place orders");
+    };
+
+    let cart = switch (carts.get(caller)) {
+      case (null) { Runtime.trap("Cart is empty") };
+      case (?items) { items };
+    };
+
+    let total = cart.foldLeft(
+      0,
+      func(acc, item) {
+        acc + getPerfumePrice(item.perfumeId) * item.quantity;
+      },
+    );
+
+    let orderId = nextOrderId;
+
+    let newOrder : Order = {
+      id = orderId;
+      items = cart;
+      total;
+      timestamp = Time.now();
+      stripePaymentIntentId;
+    };
+
+    let userOrders = switch (orders.get(caller)) {
+      case (null) { [] };
+      case (?o) { o };
+    };
+    orders.add(caller, userOrders.concat([newOrder]));
+
+    // Store delivery info separately keyed by order ID
+    let delivery : DeliveryInfo = {
+      deliveryType;
+      hostelName;
+      area;
+      roomNumber;
+      manualLocation;
+    };
+    orderDeliveries.add(orderId, delivery);
+
+    nextOrderId += 1;
+    carts.remove(caller);
+  };
+
   public query ({ caller }) func getOrders() : async [Order] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view orders");
@@ -582,6 +645,25 @@ actor {
       case (null) { [] };
       case (?userOrders) { userOrders };
     };
+  };
+
+  // Return delivery info for the caller's orders as [(orderId, DeliveryInfo)]
+  public query ({ caller }) func getMyOrderDeliveries() : async [(Nat, DeliveryInfo)] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view order deliveries");
+    };
+
+    let userOrders = switch (orders.get(caller)) {
+      case (null) { [] };
+      case (?o) { o };
+    };
+
+    let userOrderIds = userOrders.map(func(o : Order) : Nat { o.id });
+
+    let result = orderDeliveries.filter(
+      func(id, _) { userOrderIds.any(func(oid) { oid == id }) }
+    );
+    result.entries().toArray();
   };
 
   // Partner Products
@@ -750,7 +832,6 @@ actor {
       };
     };
 
-    // Check if user already reviewed this perfume for this order
     let existingReview = reviews.values().find(
       func(review) { review.reviewerPrincipal == caller and review.perfumeId == perfumeId and review.orderId == orderId }
     );
@@ -805,4 +886,3 @@ actor {
     };
   };
 };
-

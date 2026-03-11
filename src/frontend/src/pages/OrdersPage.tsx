@@ -22,11 +22,13 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  MapPin,
   MessageSquarePlus,
   Package,
   Receipt,
   RefreshCw,
   Star,
+  Store,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -34,6 +36,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { RefundRequest } from "../backend.d";
 import {
+  useMyOrderDeliveries,
   useMyRefundRequests,
   useOrders,
   usePerfumes,
@@ -118,6 +121,7 @@ export function OrdersPage() {
   const { data: orders, isLoading: ordersLoading } = useOrders();
   const { data: perfumes } = usePerfumes();
   const { data: myRefundRequests } = useMyRefundRequests();
+  const { data: orderDeliveries } = useMyOrderDeliveries();
   const submitRefund = useSubmitRefundRequest();
   const submitReview = useSubmitReview();
 
@@ -161,6 +165,11 @@ export function OrdersPage() {
       refundMap.set(String(r.orderId), r);
     }
   }
+
+  // Build a map: orderId → DeliveryInfo from the separate deliveries query
+  const deliveryMap = new Map(
+    (orderDeliveries ?? []).map(([id, info]) => [String(id), info]),
+  );
 
   const perfumeMap = new Map(perfumes?.map((p) => [String(p.id), p]) ?? []);
 
@@ -295,6 +304,7 @@ export function OrdersPage() {
               const ocidIndex = i + 1;
               const existingRefund = refundMap.get(String(order.id));
               const hasActiveRefund = !!existingRefund;
+              const deliveryInfo = deliveryMap.get(String(order.id));
 
               return (
                 <motion.div
@@ -373,6 +383,40 @@ export function OrdersPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Delivery info (from separate deliveries map) */}
+                  {deliveryInfo && (
+                    <div className="mb-3 px-2.5 py-2 rounded-md bg-secondary/20 border border-border/30 flex items-start gap-2">
+                      {deliveryInfo.deliveryType === "pickup" ? (
+                        <>
+                          <Store className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                          <p className="font-body text-xs text-muted-foreground">
+                            Pickup at store
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="w-3.5 h-3.5 text-gold/70 flex-shrink-0 mt-0.5" />
+                          <p className="font-body text-xs text-muted-foreground">
+                            {deliveryInfo.manualLocation
+                              ? deliveryInfo.manualLocation
+                              : [
+                                  deliveryInfo.hostelName,
+                                  deliveryInfo.roomNumber
+                                    ? `Room ${deliveryInfo.roomNumber}`
+                                    : null,
+                                  deliveryInfo.area &&
+                                  deliveryInfo.area !== deliveryInfo.hostelName
+                                    ? deliveryInfo.area
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
 
