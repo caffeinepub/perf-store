@@ -145,6 +145,7 @@ export interface backendInterface {
     getCart(): Promise<Array<CartItem> | null>;
     getCommissionRate(): Promise<bigint>;
     getMyOrderDeliveries(): Promise<Array<[bigint, DeliveryInfo]>>;
+    getMyOrderDeliveryFees(): Promise<Array<[bigint, boolean]>>;
     getMyPartnerProducts(): Promise<Array<PartnerProduct>>;
     getMyPayoutHistory(): Promise<Array<PayoutRecord>>;
     getMyRefundRequests(): Promise<Array<RefundRequest>>;
@@ -172,7 +173,7 @@ export interface backendInterface {
      */
     logoutSession(token: string): Promise<void>;
     placeOrder(stripePaymentIntentId: string): Promise<void>;
-    placeOrderWithDelivery(stripePaymentIntentId: string, deliveryType: string, hostelName: string, area: string, roomNumber: string, manualLocation: string): Promise<void>;
+    placeOrderWithDelivery(stripePaymentIntentId: string, deliveryType: string, hostelName: string, area: string, roomNumber: string, manualLocation: string, includeDeliveryFee: boolean): Promise<void>;
     /**
      * / Register with email and password.
      */

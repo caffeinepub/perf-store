@@ -488,6 +488,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
       : delivery.subDomain
         ? `${delivery.subDomain}`
         : "",
+    includeDeliveryFee: isDoorstep && wantDeliveryFee,
   });
 
   // Handle Stripe return with session ID
@@ -521,6 +522,7 @@ export function CartPage({ onOrderPlaced, stripeSessionId }: CartPageProps) {
                 area: string;
                 roomNumber: string;
                 manualLocation: string;
+                includeDeliveryFee: boolean;
               };
               sessionStorage.removeItem("pendingDelivery");
               await placeOrderWithDelivery.mutateAsync({

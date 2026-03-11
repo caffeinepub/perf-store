@@ -27,8 +27,10 @@ import {
   Package,
   Receipt,
   RefreshCw,
+  ShoppingBag,
   Star,
   Store,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -37,12 +39,219 @@ import { toast } from "sonner";
 import type { RefundRequest } from "../backend.d";
 import {
   useMyOrderDeliveries,
+  useMyOrderDeliveryFees,
   useMyRefundRequests,
   useOrders,
   usePerfumes,
   useSubmitRefundRequest,
   useSubmitReview,
 } from "../hooks/useQueries";
+
+// ── Delivery stage helpers ────────────────────────────────────────────────────
+
+type DeliveryStage = "placed" | "processing" | "out_for_delivery" | "delivered";
+
+function getDeliveryStage(timestamp: bigint): DeliveryStage {
+  const ms = Number(timestamp) / 1_000_000;
+  const orderDate = ms > 1_000_000_000_000 ? ms : Number(timestamp) * 1000;
+  const elapsedMinutes = (Date.now() - orderDate) / 60_000;
+
+  if (elapsedMinutes < 10) return "placed";
+  if (elapsedMinutes < 60) return "processing";
+  if (elapsedMinutes < 180) return "out_for_delivery";
+  return "delivered";
+}
+
+const STAGES: { key: DeliveryStage; label: string }[] = [
+  { key: "placed", label: "Order Placed" },
+  { key: "processing", label: "Processing" },
+  { key: "out_for_delivery", label: "Out for Delivery" },
+  { key: "delivered", label: "Delivered" },
+];
+
+const STAGE_INDEX: Record<DeliveryStage, number> = {
+  placed: 0,
+  processing: 1,
+  out_for_delivery: 2,
+  delivered: 3,
+};
+
+function StageIcon({
+  stage,
+  size = 14,
+}: { stage: DeliveryStage; size?: number }) {
+  const props = { width: size, height: size };
+  if (stage === "placed") return <ShoppingBag {...props} />;
+  if (stage === "processing") return <Package {...props} />;
+  if (stage === "out_for_delivery") return <Truck {...props} />;
+  return <CheckCircle {...props} />;
+}
+
+function StageBadge({ stage }: { stage: DeliveryStage }) {
+  if (stage === "placed") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/25">
+        <ShoppingBag className="w-2.5 h-2.5" />
+        Order Placed
+      </span>
+    );
+  }
+  if (stage === "processing") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
+        <Package className="w-2.5 h-2.5" />
+        Processing
+      </span>
+    );
+  }
+  if (stage === "out_for_delivery") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/25">
+        <Truck className="w-2.5 h-2.5" />
+        Out for Delivery
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+      <CheckCircle className="w-2.5 h-2.5" />
+      Delivered
+    </span>
+  );
+}
+
+function DeliveryTracker({ timestamp }: { timestamp: bigint }) {
+  const stage = getDeliveryStage(timestamp);
+  const activeIdx = STAGE_INDEX[stage];
+
+  const ms = Number(timestamp) / 1_000_000;
+  const orderDate = ms > 1_000_000_000_000 ? ms : Number(timestamp) * 1000;
+
+  const estimatedText = () => {
+    if (stage === "delivered") {
+      const d = new Date(orderDate + 3 * 60 * 60 * 1000);
+      return `Delivered on ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`;
+    }
+    if (stage === "out_for_delivery")
+      return "Estimated delivery: within 2 hours";
+    if (stage === "processing") return "Estimated delivery: within 3 hours";
+    return "Estimated delivery: within 4 hours";
+  };
+
+  return (
+    <div className="mb-3 px-1">
+      {/* Stepper */}
+      <div className="relative flex items-start justify-between">
+        {/* Connector lines */}
+        <div className="absolute top-[14px] left-0 right-0 flex px-[20px]">
+          {STAGES.slice(0, -1).map((s, idx) => (
+            <div
+              key={s.key}
+              className="flex-1 h-[2px] transition-colors duration-500"
+              style={{
+                backgroundColor:
+                  idx < activeIdx
+                    ? "oklch(var(--gold))"
+                    : "oklch(var(--border))",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Steps */}
+        {STAGES.map((s, idx) => {
+          const isCompleted = idx < activeIdx;
+          const isActive = idx === activeIdx;
+          const isFuture = idx > activeIdx;
+          return (
+            <div
+              key={s.key}
+              className="relative flex flex-col items-center gap-1.5 z-10"
+              style={{ minWidth: 0, flex: "1 1 0" }}
+            >
+              {/* Circle */}
+              <div className="relative flex items-center justify-center">
+                {isActive && (
+                  <motion.div
+                    className="absolute rounded-full"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      background: "oklch(var(--gold) / 0.20)",
+                    }}
+                    animate={{ scale: [1, 1.45, 1], opacity: [0.7, 0.2, 0.7] }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "easeInOut",
+                    }}
+                  />
+                )}
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-500 relative"
+                  style={{
+                    background: isCompleted
+                      ? "oklch(var(--gold))"
+                      : isActive
+                        ? "transparent"
+                        : "oklch(var(--secondary))",
+                    border: isActive
+                      ? "2px solid oklch(var(--gold))"
+                      : isCompleted
+                        ? "none"
+                        : "2px solid oklch(var(--border))",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: isCompleted
+                        ? "oklch(var(--primary-foreground))"
+                        : isActive
+                          ? "oklch(var(--gold))"
+                          : "oklch(var(--muted-foreground))",
+                      opacity: isFuture ? 0.45 : 1,
+                    }}
+                  >
+                    <StageIcon stage={s.key} size={13} />
+                  </span>
+                </div>
+              </div>
+
+              {/* Label */}
+              <p
+                className="font-body text-center leading-tight"
+                style={{
+                  fontSize: "9px",
+                  color: isCompleted
+                    ? "oklch(var(--gold))"
+                    : isActive
+                      ? "oklch(var(--foreground))"
+                      : "oklch(var(--muted-foreground))",
+                  opacity: isFuture ? 0.45 : 1,
+                  maxWidth: 60,
+                }}
+              >
+                {s.label}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Estimated delivery text */}
+      <p
+        className="font-body text-center mt-2.5"
+        style={{ fontSize: "10px", color: "oklch(var(--muted-foreground))" }}
+      >
+        {stage === "delivered" ? (
+          <span style={{ color: "oklch(var(--gold))" }}>{estimatedText()}</span>
+        ) : (
+          estimatedText()
+        )}
+      </p>
+    </div>
+  );
+}
 
 // ── Star Picker ──────────────────────────────────────────────────────────────
 
@@ -122,6 +331,7 @@ export function OrdersPage() {
   const { data: perfumes } = usePerfumes();
   const { data: myRefundRequests } = useMyRefundRequests();
   const { data: orderDeliveries } = useMyOrderDeliveries();
+  const { data: orderDeliveryFees } = useMyOrderDeliveryFees();
   const submitRefund = useSubmitRefundRequest();
   const submitReview = useSubmitReview();
 
@@ -169,6 +379,9 @@ export function OrdersPage() {
   // Build a map: orderId → DeliveryInfo from the separate deliveries query
   const deliveryMap = new Map(
     (orderDeliveries ?? []).map(([id, info]) => [String(id), info]),
+  );
+  const feeMap = new Map(
+    (orderDeliveryFees ?? []).map(([id, hasFee]) => [String(id), hasFee]),
   );
 
   const perfumeMap = new Map(perfumes?.map((p) => [String(p.id), p]) ?? []);
@@ -305,6 +518,8 @@ export function OrdersPage() {
               const existingRefund = refundMap.get(String(order.id));
               const hasActiveRefund = !!existingRefund;
               const deliveryInfo = deliveryMap.get(String(order.id));
+              const includeDeliveryFee = feeMap.get(String(order.id)) ?? false;
+              const stage = getDeliveryStage(order.timestamp);
 
               return (
                 <motion.div
@@ -326,9 +541,7 @@ export function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
-                      <span className="bg-secondary text-secondary-foreground text-xs font-body font-medium px-2.5 py-1 rounded-full border border-border">
-                        Delivered
-                      </span>
+                      <StageBadge stage={stage} />
                       {hasActiveRefund && existingRefund && (
                         <RefundStatusBadge status={existingRefund.status} />
                       )}
@@ -386,6 +599,9 @@ export function OrdersPage() {
                     </div>
                   )}
 
+                  {/* Delivery Tracker */}
+                  <DeliveryTracker timestamp={order.timestamp} />
+
                   {/* Delivery info (from separate deliveries map) */}
                   {deliveryInfo && (
                     <div className="mb-3 px-2.5 py-2 rounded-md bg-secondary/20 border border-border/30 flex items-start gap-2">
@@ -397,25 +613,39 @@ export function OrdersPage() {
                           </p>
                         </>
                       ) : (
-                        <>
-                          <MapPin className="w-3.5 h-3.5 text-gold/70 flex-shrink-0 mt-0.5" />
-                          <p className="font-body text-xs text-muted-foreground">
-                            {deliveryInfo.manualLocation
-                              ? deliveryInfo.manualLocation
-                              : [
-                                  deliveryInfo.hostelName,
-                                  deliveryInfo.roomNumber
-                                    ? `Room ${deliveryInfo.roomNumber}`
-                                    : null,
-                                  deliveryInfo.area &&
-                                  deliveryInfo.area !== deliveryInfo.hostelName
-                                    ? deliveryInfo.area
-                                    : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                          </p>
-                        </>
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-gold/70 flex-shrink-0 mt-0.5" />
+                            <p className="font-body text-xs text-muted-foreground">
+                              {deliveryInfo.manualLocation
+                                ? deliveryInfo.manualLocation
+                                : [
+                                    deliveryInfo.hostelName,
+                                    deliveryInfo.roomNumber
+                                      ? `Room ${deliveryInfo.roomNumber}`
+                                      : null,
+                                    deliveryInfo.area &&
+                                    deliveryInfo.area !==
+                                      deliveryInfo.hostelName
+                                      ? deliveryInfo.area
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 pl-5">
+                            {includeDeliveryFee ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-gold/15 text-gold border border-gold/20">
+                                + KES 50 delivery fee
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-secondary/40 text-muted-foreground border border-border/20">
+                                No delivery fee
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}

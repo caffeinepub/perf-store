@@ -131,6 +131,7 @@ actor {
   let carts = Map.empty<Principal, [CartItem]>();
   let orders = Map.empty<Principal, [Order]>();
   let orderDeliveries = Map.empty<Nat, DeliveryInfo>();
+  let orderDeliveryFees = Map.empty<Nat, Bool>();
   let payoutRecords = Map.empty<Principal, [PayoutRecord]>();
   let payoutAccounts = Map.empty<Principal, Text>();
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -590,6 +591,7 @@ actor {
     area : Text,
     roomNumber : Text,
     manualLocation : Text,
+    includeDeliveryFee : Bool,
   ) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can place orders");
@@ -632,6 +634,7 @@ actor {
       manualLocation;
     };
     orderDeliveries.add(orderId, delivery);
+    orderDeliveryFees.add(orderId, includeDeliveryFee);
 
     nextOrderId += 1;
     carts.remove(caller);
@@ -666,6 +669,25 @@ actor {
     result.entries().toArray();
   };
 
+
+  // Return delivery fee choices for the caller's orders as [(orderId, Bool)]
+  public query ({ caller }) func getMyOrderDeliveryFees() : async [(Nat, Bool)] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view order delivery fees");
+    };
+
+    let userOrders = switch (orders.get(caller)) {
+      case (null) { [] };
+      case (?o) { o };
+    };
+
+    let userOrderIds = userOrders.map(func(o : Order) : Nat { o.id });
+
+    let result = orderDeliveryFees.filter(
+      func(id, _) { userOrderIds.any(func(oid) { oid == id }) }
+    );
+    result.entries().toArray();
+  };
   // Partner Products
   public shared ({ caller }) func submitPartnerProduct(
     name : Text,

@@ -65,6 +65,21 @@ export function useMyOrderDeliveries() {
   });
 }
 
+export function useMyOrderDeliveryFees() {
+  const { actor } = useActor();
+  return useQuery<Array<[bigint, boolean]>>({
+    queryKey: ["orderDeliveryFees"],
+    queryFn: async (): Promise<Array<[bigint, boolean]>> => {
+      if (!actor) return [];
+      const a = actor as unknown as {
+        getMyOrderDeliveryFees: () => Promise<Array<[bigint, boolean]>>;
+      };
+      return a.getMyOrderDeliveryFees();
+    },
+    enabled: !!actor,
+  });
+}
+
 export function usePartnerStats() {
   const { actor, isFetching } = useActor();
   return useQuery<PartnerStats>({
@@ -184,6 +199,7 @@ export function usePlaceOrderWithDelivery() {
       area,
       roomNumber,
       manualLocation,
+      includeDeliveryFee,
     }: {
       stripePaymentIntentId: string;
       deliveryType: string;
@@ -191,6 +207,7 @@ export function usePlaceOrderWithDelivery() {
       area: string;
       roomNumber: string;
       manualLocation: string;
+      includeDeliveryFee: boolean;
     }) => {
       if (!actor) throw new Error("Not authenticated");
       // Cast needed: placeOrderWithDelivery exists in backend.d.ts but backend.ts may not be updated
@@ -202,6 +219,7 @@ export function usePlaceOrderWithDelivery() {
           ar: string,
           rn: string,
           ml: string,
+          idf: boolean,
         ) => Promise<void>;
         clearCart: () => Promise<void>;
       };
@@ -212,6 +230,7 @@ export function usePlaceOrderWithDelivery() {
         area,
         roomNumber,
         manualLocation,
+        includeDeliveryFee,
       );
       await a.clearCart();
     },
@@ -219,6 +238,7 @@ export function usePlaceOrderWithDelivery() {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["orderDeliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["orderDeliveryFees"] });
     },
   });
 }
